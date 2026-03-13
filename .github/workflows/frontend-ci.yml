@@ -44,9 +44,14 @@ jobs:
       - name: Run tests
         if: steps.frontend_check.outputs.exists == 'true'
         working-directory: frontend
-        run: npm test -- --watch=false
+        run: npm run test --if-present -- --watch=false
 
-      - name: Build / type check
+      - name: Type check
+        if: steps.frontend_check.outputs.exists == 'true'
+        working-directory: frontend
+        run: npm run typecheck --if-present
+
+      - name: Build
         if: steps.frontend_check.outputs.exists == 'true'
         working-directory: frontend
         run: npm run build --if-present

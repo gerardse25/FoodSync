@@ -45,8 +45,8 @@ jobs:
 
       - name: Run tests if present
         run: |
-          if [ -d tests ] || compgen -G "test_*.py" > /dev/null || compgen -G "*_test.py" > /dev/null; then
+          if find . -type f \( -path "*/tests/*.py" -o -name "test_*.py" -o -name "*_test.py" \) | grep -q .; then
             pytest
           else
-            echo "No hay tests todavía. Se omite pytest."
+            echo "No tests found yet. Skipping pytest."
           fi
