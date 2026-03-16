@@ -18,7 +18,7 @@ Examples:
 
 - The PR title must include the Jira issue key.
 - Before merging, the CI must pass.
-- Once we have admin permissions, `main` will have branch protection and required checks.
+- `main` has branch protection and required checks.
 
 ## Code quality
 
