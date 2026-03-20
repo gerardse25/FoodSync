@@ -18,7 +18,7 @@ Examples:
 
 - The PR title must include the Jira issue key.
 - Before merging, the CI must pass.
-- Once we have admin permissions, `main` will have branch protection and required checks.
+- `main` has branch protection and required checks.
 
 ## Code quality
 
@@ -26,3 +26,9 @@ For Python, the following checks will be validated:
 - linting with Ruff
 - formatting with Black
 - tests with Pytest, when available
+
+For React Native, the following checks will be validated:
+- linting with ESLint
+- formatting with Prettier
+- tests with Jest, when available
+- type checking with TypeScript, when available
