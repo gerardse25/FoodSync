@@ -26,3 +26,9 @@ For Python, the following checks will be validated:
 - linting with Ruff
 - formatting with Black
 - tests with Pytest, when available
+
+For React Native, the following checks will be validated:
+- linting with ESLint
+- formatting with Prettier
+- tests with Jest, when available
+- type checking with TypeScript, when available
