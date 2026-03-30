@@ -1,18 +1,29 @@
 from datetime import datetime, timedelta
-from jose import jwt, JWTError
-from passlib.context import CryptContext
+from email.mime.text import MIMEText
+import secrets
+import smtplib
+
 from fastapi import Depends, HTTPException
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from jose import JWTError, jwt
+from passlib.context import CryptContext
 from sqlalchemy.orm import Session as DBSession
 
+import app.models
 from app.config import (
-    SECRET_KEY,
-    ALGORITHM,
     ACCESS_TOKEN_EXPIRE_MINUTES,
+    ALGORITHM,
+    FRONTEND_RESET_URL,
+    PASSWORD_RESET_EXPIRE_MINUTES,
     REFRESH_TOKEN_EXPIRE_DAYS,
+    SECRET_KEY,
+    SMTP_FROM,
+    SMTP_HOST,
+    SMTP_PASSWORD,
+    SMTP_PORT,
+    SMTP_USER,
 )
 from app.database import get_db
-import app.models
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 security = HTTPBearer()
@@ -75,13 +86,13 @@ def get_current_user(
         if token_type != "access" or not user_id or not session_id:
             raise HTTPException(status_code=401, detail="No autoritzat")
 
-    except JWTError:
-        raise HTTPException(status_code=401, detail="Sessió caducada")
+    except JWTError as err:
+        raise HTTPException(status_code=401, detail="Sessió caducada") from err
 
     session = db.query(app.models.Session).filter(
         app.models.Session.id == session_id,
         app.models.Session.user_id == user_id,
-        app.models.Session.is_active == True
+        app.models.Session.is_active,
     ).first()
 
     if not session:
@@ -89,7 +100,7 @@ def get_current_user(
 
     user = db.query(app.models.User).filter(
         app.models.User.id == user_id,
-        app.models.User.is_active == True
+        app.models.User.is_active,
     ).first()
 
     if not user:
@@ -98,30 +109,14 @@ def get_current_user(
     return user, session
 
 
-#Part recuperar contrasenya
-
-import secrets
-import smtplib
-from email.mime.text import MIMEText
-from datetime import datetime, timedelta
-
-from app.config import (
-    SMTP_HOST,
-    SMTP_PORT,
-    SMTP_USER,
-    SMTP_PASSWORD,
-    SMTP_FROM,
-    FRONTEND_RESET_URL,
-    PASSWORD_RESET_EXPIRE_MINUTES,
-)
-
-
 def generate_password_reset_token() -> str:
     return secrets.token_urlsafe(32)
 
 
 def get_password_reset_expiry():
-    return datetime.utcnow() + timedelta(minutes=PASSWORD_RESET_EXPIRE_MINUTES)
+    return datetime.utcnow() + timedelta(
+        minutes=PASSWORD_RESET_EXPIRE_MINUTES
+    )
 
 
 def build_reset_link(token: str) -> str:
