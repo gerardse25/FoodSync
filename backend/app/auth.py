@@ -1,7 +1,7 @@
-from datetime import datetime, timedelta
-from email.mime.text import MIMEText
 import secrets
 import smtplib
+from datetime import datetime, timedelta
+from email.mime.text import MIMEText
 
 from fastapi import Depends, HTTPException
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
