@@ -89,19 +89,27 @@ def get_current_user(
     except JWTError as err:
         raise HTTPException(status_code=401, detail="Sessió caducada") from err
 
-    session = db.query(app.models.Session).filter(
-        app.models.Session.id == session_id,
-        app.models.Session.user_id == user_id,
-        app.models.Session.is_active,
-    ).first()
+    session = (
+        db.query(app.models.Session)
+        .filter(
+            app.models.Session.id == session_id,
+            app.models.Session.user_id == user_id,
+            app.models.Session.is_active,
+        )
+        .first()
+    )
 
     if not session:
         raise HTTPException(status_code=401, detail="Sessió caducada")
 
-    user = db.query(app.models.User).filter(
-        app.models.User.id == user_id,
-        app.models.User.is_active,
-    ).first()
+    user = (
+        db.query(app.models.User)
+        .filter(
+            app.models.User.id == user_id,
+            app.models.User.is_active,
+        )
+        .first()
+    )
 
     if not user:
         raise HTTPException(status_code=401, detail="No autoritzat")
@@ -114,9 +122,7 @@ def generate_password_reset_token() -> str:
 
 
 def get_password_reset_expiry():
-    return datetime.utcnow() + timedelta(
-        minutes=PASSWORD_RESET_EXPIRE_MINUTES
-    )
+    return datetime.utcnow() + timedelta(minutes=PASSWORD_RESET_EXPIRE_MINUTES)
 
 
 def build_reset_link(token: str) -> str:

@@ -19,9 +19,11 @@ def register(data: app.schemas.RegisterSchema, db: Session = Depends(get_db)):
     except ValueError as err:
         raise HTTPException(status_code=400, detail=str(err)) from err
 
-    existing_user = db.query(app.models.User).filter(
-        app.models.User.email_normalized == normalized_email
-    ).first()
+    existing_user = (
+        db.query(app.models.User)
+        .filter(app.models.User.email_normalized == normalized_email)
+        .first()
+    )
 
     if existing_user:
         raise HTTPException(
@@ -76,17 +78,19 @@ def login(data: app.schemas.LoginSchema, db: Session = Depends(get_db)):
             detail="Credencials incorrectes",
         ) from err
 
-    user = db.query(app.models.User).filter(
-        app.models.User.email_normalized == normalized_email,
-        app.models.User.is_active,
-    ).first()
+    user = (
+        db.query(app.models.User)
+        .filter(
+            app.models.User.email_normalized == normalized_email,
+            app.models.User.is_active,
+        )
+        .first()
+    )
 
     if not user or not app.auth.verify_password(data.password, user.password_hash):
         raise HTTPException(status_code=401, detail="Credencials incorrectes")
 
-    refresh_token, refresh_expire = app.auth.create_refresh_token(
-        {"sub": str(user.id)}
-    )
+    refresh_token, refresh_expire = app.auth.create_refresh_token({"sub": str(user.id)})
 
     session = app.models.Session(
         user_id=user.id,
@@ -128,10 +132,14 @@ def refresh_token(data: app.schemas.RefreshSchema, db: Session = Depends(get_db)
     except JWTError as err:
         raise HTTPException(status_code=401, detail="Token invàlid") from err
 
-    session = db.query(app.models.Session).filter(
-        app.models.Session.refresh_token == data.refresh_token,
-        app.models.Session.is_active,
-    ).first()
+    session = (
+        db.query(app.models.Session)
+        .filter(
+            app.models.Session.refresh_token == data.refresh_token,
+            app.models.Session.is_active,
+        )
+        .first()
+    )
 
     if not session:
         raise HTTPException(status_code=401, detail="Sessió no vàlida")
@@ -183,16 +191,24 @@ def forgot_password(
             detail="El format del correu és invàlid",
         ) from err
 
-    user = db.query(app.models.User).filter(
-        app.models.User.email_normalized == normalized_email,
-        app.models.User.is_active,
-    ).first()
+    user = (
+        db.query(app.models.User)
+        .filter(
+            app.models.User.email_normalized == normalized_email,
+            app.models.User.is_active,
+        )
+        .first()
+    )
 
     if user:
-        old_tokens = db.query(app.models.PasswordResetToken).filter(
-            app.models.PasswordResetToken.user_id == user.id,
-            not app.models.PasswordResetToken.used,
-        ).all()
+        old_tokens = (
+            db.query(app.models.PasswordResetToken)
+            .filter(
+                app.models.PasswordResetToken.user_id == user.id,
+                not app.models.PasswordResetToken.used,
+            )
+            .all()
+        )
 
         for old_token in old_tokens:
             old_token.used = True
@@ -214,8 +230,7 @@ def forgot_password(
 
     return {
         "message": (
-            "Si el correu existeix, rebràs instruccions per "
-            "restablir la contrasenya"
+            "Si el correu existeix, rebràs instruccions per " "restablir la contrasenya"
         )
     }
 
@@ -245,10 +260,14 @@ def reset_password(
     data: app.schemas.ResetPasswordSchema,
     db: Session = Depends(get_db),
 ):
-    token_row = db.query(app.models.PasswordResetToken).filter(
-        app.models.PasswordResetToken.token == data.token,
-        not app.models.PasswordResetToken.used,
-    ).first()
+    token_row = (
+        db.query(app.models.PasswordResetToken)
+        .filter(
+            app.models.PasswordResetToken.token == data.token,
+            not app.models.PasswordResetToken.used,
+        )
+        .first()
+    )
 
     if not token_row:
         raise HTTPException(status_code=400, detail="Token invàlid o caducat")
@@ -258,10 +277,14 @@ def reset_password(
         db.commit()
         raise HTTPException(status_code=400, detail="Token invàlid o caducat")
 
-    user = db.query(app.models.User).filter(
-        app.models.User.id == token_row.user_id,
-        app.models.User.is_active,
-    ).first()
+    user = (
+        db.query(app.models.User)
+        .filter(
+            app.models.User.id == token_row.user_id,
+            app.models.User.is_active,
+        )
+        .first()
+    )
 
     if not user:
         token_row.used = True
@@ -271,10 +294,14 @@ def reset_password(
     user.password_hash = app.auth.hash_password(data.new_password)
     token_row.used = True
 
-    active_sessions = db.query(app.models.Session).filter(
-        app.models.Session.user_id == user.id,
-        app.models.Session.is_active,
-    ).all()
+    active_sessions = (
+        db.query(app.models.Session)
+        .filter(
+            app.models.Session.user_id == user.id,
+            app.models.Session.is_active,
+        )
+        .all()
+    )
 
     for session in active_sessions:
         session.is_active = False
@@ -298,10 +325,14 @@ def delete_account(
     user.email = f"deleted::{user.id}@foodsync.local"
     user.username = f"deleted_{str(user.id)[:8]}"
 
-    sessions = db.query(app.models.Session).filter(
-        app.models.Session.user_id == user.id,
-        app.models.Session.is_active,
-    ).all()
+    sessions = (
+        db.query(app.models.Session)
+        .filter(
+            app.models.Session.user_id == user.id,
+            app.models.Session.is_active,
+        )
+        .all()
+    )
 
     for session in sessions:
         session.is_active = False
