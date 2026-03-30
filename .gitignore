@@ -1,0 +1,28 @@
+# Variables sensibles
+.env
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# Entorns virtuals
+.venv
+.venv-1
+venv/
+env/
+
+# IDEs
+.vscode/
+.idea/
+
+# Sistema
+.DS_Store
+Thumbs.db
+
+# Docker (si en feu servir)
+*.log
+
+# Node (per frontend)
+node_modules/
+dist/
