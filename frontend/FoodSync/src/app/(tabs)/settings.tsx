@@ -1,3 +1,4 @@
+import { router } from "expo-router";
 import {
   LogOut,
 } from "lucide-react-native";
@@ -10,8 +11,11 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 export default function SettingsScreen() {
-
-
+  
+  const handleLogout = () => {
+    // Aquí ira la lógica de limpiar el token/sesión
+    router.replace("/");
+  };
 
   return (
     <SafeAreaView className="flex-1 bg-[#F8FAF8]">
@@ -30,6 +34,7 @@ export default function SettingsScreen() {
         <View className="space-y-4 gap-4">
           <TouchableOpacity
             className="w-full flex-row items-center justify-center h-14 bg-white border border-red-200 rounded-2xl shadow-sm active:bg-red-50"
+            onPress={handleLogout}
           >
             <LogOut color="#ef4444" size={20} />
             <Text className="text-red-500 font-semibold text-base ml-2">
