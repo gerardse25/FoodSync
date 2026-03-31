@@ -42,7 +42,6 @@ def register(data: app.schemas.RegisterSchema, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(new_user)
 
-    access_token = app.auth.create_access_token({"sub": str(new_user.id)})
     refresh_token, refresh_expire = app.auth.create_refresh_token(
         {"sub": str(new_user.id)}
     )
@@ -55,6 +54,11 @@ def register(data: app.schemas.RegisterSchema, db: Session = Depends(get_db)):
     )
     db.add(session)
     db.commit()
+    db.refresh(session)
+
+    access_token = app.auth.create_access_token(
+        {"sub": str(new_user.id), "sid": str(session.id)}
+    )
 
     return {
         "message": "Compte creat correctament",
@@ -144,7 +148,7 @@ def refresh_token(data: app.schemas.RefreshSchema, db: Session = Depends(get_db)
     if not session:
         raise HTTPException(status_code=401, detail="Sessió no vàlida")
 
-    new_access = app.auth.create_access_token({"sub": user_id})
+    new_access = app.auth.create_access_token({"sub": user_id, "sid": str(session.id)})
     return {"access_token": new_access}
 
 
@@ -205,7 +209,7 @@ def forgot_password(
             db.query(app.models.PasswordResetToken)
             .filter(
                 app.models.PasswordResetToken.user_id == user.id,
-                not app.models.PasswordResetToken.used,
+                app.models.PasswordResetToken.used.is_(False),
             )
             .all()
         )
@@ -249,6 +253,12 @@ def change_password(
             detail="La contrasenya actual és incorrecta",
         )
 
+    if data.current_password == data.new_password:
+        raise HTTPException(
+            status_code=400,
+            detail="La nova contrasenya no pot ser igual que l'actual",
+        )
+
     user.password_hash = app.auth.hash_password(data.new_password)
     db.commit()
 
@@ -264,7 +274,7 @@ def reset_password(
         db.query(app.models.PasswordResetToken)
         .filter(
             app.models.PasswordResetToken.token == data.token,
-            not app.models.PasswordResetToken.used,
+            app.models.PasswordResetToken.used.is_(False),
         )
         .first()
     )
