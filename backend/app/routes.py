@@ -8,6 +8,7 @@ import app.auth
 import app.models
 import app.schemas
 from app.database import get_db
+from app.home_models import Home, HomeMembership
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -317,6 +318,49 @@ def delete_account(
     db: Session = Depends(get_db),
 ):
     user, _session = current
+
+    ### LLAR
+
+    active_membership = (
+        db.query(HomeMembership)
+        .filter(
+            HomeMembership.user_id == user.id,
+            HomeMembership.is_active,
+        )
+        .first()
+    )
+ 
+    if active_membership:
+        home = (
+            db.query(Home)
+            .filter(Home.id == active_membership.home_id, Home.is_active)
+            .first()
+        )
+        now = datetime.utcnow()
+ 
+        if home and active_membership.role == "owner":
+            # Dissoldre la llar si l'usuari és propietari
+            all_memberships = (
+                db.query(HomeMembership)
+                .filter(
+                    HomeMembership.home_id == home.id,
+                    HomeMembership.is_active,
+                )
+                .all()
+            )
+            for m in all_memberships:
+                m.is_active = False
+                m.left_at = now
+            home.is_active = False
+            home.updated_at = now
+        elif active_membership:
+            # Sortir de la llar si és membre
+            active_membership.is_active = False
+            active_membership.left_at = now
+            if home:
+                home.updated_at = now
+
+    ###
 
     user.is_active = False
 
