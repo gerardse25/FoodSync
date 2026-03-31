@@ -60,6 +60,7 @@ export default function OnboardingScreen() {
         
         <TouchableOpacity 
           className="w-96 h-12 rounded-full border-2 border-gray-200 flex items-center justify-center active:bg-gray-50"
+          onPress={() => router.push('/(auth)/login')}
         >
           <Text className="text-gray-900 text-lg font-semibold">Iniciar sesión</Text>
         </TouchableOpacity>
