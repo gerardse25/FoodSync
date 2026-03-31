@@ -449,7 +449,7 @@ export default function RegisterScreen() {
           {/* Enlace al Login */}
           <View className="mt-6 flex-row justify-center items-center pb-8">
             <Text className="text-gray-500">¿Ya tienes una cuenta? </Text>
-            <TouchableOpacity >
+            <TouchableOpacity onPress={() => router.replace("/(auth)/login")}>
               <Text className="text-emerald-500 font-medium">
                 Iniciar sesión
               </Text>
