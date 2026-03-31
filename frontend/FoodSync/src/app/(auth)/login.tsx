@@ -1,7 +1,7 @@
 import { router } from "expo-router";
 import { ArrowLeft, CircleAlert, Eye, EyeOff } from "lucide-react-native";
 import React, { useRef, useState } from "react";
-import { Text, TextInput, TouchableOpacity, View } from "react-native";
+import { Text, TextInput, TouchableOpacity, View, Alert } from "react-native";
 import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -59,37 +59,71 @@ export default function LoginScreen() {
   /**
    * Lógica de Inicio de Sesión
    */
-  const handleLogin = () => {
-    let isValid = true;
+const handleLogin = () => {
+  let isValid = true;
 
-    // Validar Email
-    if (!isValidEmail(email)) {
-      setEmailError("Correo no válido");
-      isValid = false;
-    } else {
-      setEmailError("");
-    }
+  // Validar Email
+  if (!isValidEmail(email)) {
+    setEmailError("Correo no válido");
+    isValid = false;
+  } else {
+    setEmailError("");
+  }
 
-    // Validar Contraseña (mínimo 6 caracteres para login)
-    if (!isValidPassword(password)) {
-      setPasswordError("La contraseña debe tener al menos 6 caracteres");
-      isValid = false;
-    } else {
-      setPasswordError("");
-    }
+  // Validar Contraseña (mínimo 6 caracteres para login)
+  if (!isValidPassword(password)) {
+    setPasswordError("La contraseña debe tener al menos 6 caracteres");
+    isValid = false;
+  } else {
+    setPasswordError("");
+  }
 
-    // Buscamos el usuario en nuestra "base de datos" simulada y verificamos la contraseña
-    if (isValid) {
-      const userFound = usersDB.find(
-        (user) => user.email === email.trim() && user.password === password,
-      );
+  // Si los datos no son válidos, mostramos un alert de error
+  if (!isValid) {
+    Alert.alert(
+      "Error en los datos",
+      "Por favor, revisa los campos. Asegúrate de que el correo y la contraseña sean correctos.",
+      [
+        {
+          text: "OK",
+        },
+      ],
+      { cancelable: false }
+    );
+    return; // Detener la ejecución de la función si hay errores
+  }
 
-      if (userFound) {
-      } else {
-        setPasswordError("Correo o contraseña incorrectos");
-      }
-    }
-  };
+  // Buscamos el usuario en nuestra "base de datos" simulada y verificamos la contraseña
+  const userFound = usersDB.find(
+    (user) => user.email === email.trim() && user.password === password
+  );
+
+  if (userFound) {
+    // Si el usuario está en la base de datos, mostramos el alert de éxito
+    Alert.alert(
+      "Inicio de sesión exitoso",
+      "Bienvenido a FoodSync",
+      [
+        {
+          text: "OK",
+        },
+      ],
+      { cancelable: false }
+    );
+  } else {
+    // Si no se encuentra el usuario, mostramos el alert de error
+    Alert.alert(
+      "Error al hacer inicio de sesión",
+      "Verifica tu correo y contraseña.",
+      [
+        {
+          text: "OK",
+        },
+      ],
+      { cancelable: false }
+    );
+  }
+};
 
   return (
     <SafeAreaView className="flex-1 bg-[#F8FAF8]">
@@ -216,7 +250,7 @@ export default function LoginScreen() {
           </View>
 
           {/* Enlace al Registro */}
-          <View className="mt-auto flex-row justify-center items-center pb-8">
+          <View className="mt-6 flex-row justify-center items-center pb-8">
             <Text className="text-gray-500">¿No tienes cuenta? </Text>
             <TouchableOpacity onPress={() => router.push("/(auth)/register")}>
               <Text className="text-emerald-500 font-bold">Regístrate</Text>
