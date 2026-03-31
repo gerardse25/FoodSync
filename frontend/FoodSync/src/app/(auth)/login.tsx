@@ -106,6 +106,7 @@ const handleLogin = () => {
       [
         {
           text: "OK",
+          onPress: () => router.replace("/(tabs)/settings"),
         },
       ],
       { cancelable: false }

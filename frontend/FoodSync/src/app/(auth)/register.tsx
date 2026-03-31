@@ -181,6 +181,7 @@ export default function RegisterScreen() {
         [
           {
             text: "Continuar",
+            onPress: () => router.replace("/(tabs)/settings"),
           },
         ],
       );
