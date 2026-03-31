@@ -7,7 +7,7 @@ import {
   EyeOff,
 } from "lucide-react-native";
 import React, { useRef, useState } from "react";
-import { Text, TextInput, TouchableOpacity, View } from "react-native";
+import { Alert, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -39,8 +39,8 @@ export default function RegisterScreen() {
     return trimmedName.length >= 2 && trimmedName.length <= 16;
   };
 
-  const handleNameBlur = () => {
-    if (!isValidName(name)) {
+  const handleNameEndEditing = (text: string) => {
+    if (!isValidName(text)) {
       setNameError("El nombre debe tener entre 2 y 16 caracteres");
     } else {
       setNameError("");
@@ -59,7 +59,7 @@ export default function RegisterScreen() {
   */
   const isValidEmail = (email: string) => {
     const trimmedEmail = email.trim();
-    if (trimmedEmail.length > 128) {
+    if (trimmedEmail.length === 0 || trimmedEmail.length > 128) {
       return false;
     }
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -138,9 +138,12 @@ export default function RegisterScreen() {
   const checks = getPasswordChecks(password);
 
   const handleRegister = () => {
+    let isValid = true;
+
     const nameValid = isValidName(name);
     if (!nameValid) {
       setNameError("El nombre debe tener entre 2 y 16 caracteres");
+      isValid = false;
     } else {
       setNameError("");
     }
@@ -148,6 +151,7 @@ export default function RegisterScreen() {
     const emailValid = isValidEmail(email);
     if (!emailValid) {
       setEmailError("Correo no válido");
+      isValid = false;
     } else {
       setEmailError("");
     }
@@ -156,6 +160,7 @@ export default function RegisterScreen() {
     setPasswordStarted(true);
     if (passwordErrorMsg) {
       setPasswordError(passwordErrorMsg);
+      isValid = false;
     } else {
       setPasswordError("");
     }
@@ -164,8 +169,26 @@ export default function RegisterScreen() {
     const passwordsMatch = password === confirmPassword && password.length > 0;
     if (!passwordsMatch) {
       setConfirmPasswordError("Las contraseñas no coinciden o están vacías");
+      isValid = false;
     } else {
       setConfirmPasswordError("");
+    }
+
+    if (isValid) {
+      Alert.alert(
+        "¡Registro Exitoso!",
+        "Tu cuenta ha sido creada correctamente.",
+        [
+          {
+            text: "Continuar",
+          },
+        ],
+      );
+    } else {
+      Alert.alert(
+        "Error en el registro",
+        "Por favor, corrige los errores antes de registrarte.",
+      );
     }
   };
 
@@ -201,7 +224,7 @@ export default function RegisterScreen() {
         extraScrollHeight={40}
         showsVerticalScrollIndicator={false}
       >
-        {/* Cabecera con Botón de Atrás */}
+        {/* Botón de Atrás */}
         <View className="px-4 pt-6 pb-4">
           <TouchableOpacity
             className="w-10 h-10 rounded-xl flex items-center justify-center active:bg-gray-200"
@@ -230,7 +253,7 @@ export default function RegisterScreen() {
                   setName(text);
                   if (nameError) setNameError("");
                 }}
-                onBlur={handleNameBlur}
+                onEndEditing={(e) => handleNameEndEditing(e.nativeEvent.text)}
                 placeholder="John Doe"
                 placeholderTextColor="#9CA3AF"
                 autoCapitalize="words"
@@ -253,9 +276,7 @@ export default function RegisterScreen() {
                 value={email}
                 onChangeText={(text) => {
                   setEmail(text);
-                  if (emailError && isValidEmail(text)) {
-                    setEmailError("");
-                  }
+                  if (emailError && isValidEmail(text)) setEmailError("");
                 }}
                 onEndEditing={(e) => handleEmailEndEditing(e.nativeEvent.text)}
                 placeholder="correo@email.com"
@@ -268,6 +289,7 @@ export default function RegisterScreen() {
                 importantForAutofill="yes"
                 className="h-14 px-4 rounded-2xl bg-gray-100 text-base"
               />
+              {/* Muestra el error del correo si existe */}
               {emailError ? (
                 <View className="flex-row gap-2 items-center">
                   <CircleAlert color="#ef4444" size={16} />
@@ -319,7 +341,7 @@ export default function RegisterScreen() {
                   )}
                 </TouchableOpacity>
               </View>
-              {/* Checklist de requisitos */}
+
               {passwordStarted && (
                 <View className="mt-2 space-y-1">
                   <PasswordItem
@@ -346,6 +368,7 @@ export default function RegisterScreen() {
               )}
             </View>
 
+            {/* Input: Confirm Password */}
             <View className="space-y-2 mt-4">
               <Text className="font-medium text-gray-900">
                 Confirma tu contraseña
@@ -366,7 +389,7 @@ export default function RegisterScreen() {
                     }
                   }}
                   onEndEditing={(e) =>
-                    handlePasswordEndEditing(e.nativeEvent.text)
+                    handleConfirmPasswordEndEditing(e.nativeEvent.text)
                   }
                   placeholder="Repite tu contraseña"
                   placeholderTextColor="#9CA3AF"
@@ -395,7 +418,7 @@ export default function RegisterScreen() {
                 </TouchableOpacity>
               </View>
             </View>
-            {/* Checklist de requisitos */}
+
             {confirmPasswordStarted && confirmPasswordError ? (
               <View className="mt-2 space-y-1">
                 <View className="flex-row items-center gap-2">
@@ -406,6 +429,7 @@ export default function RegisterScreen() {
                 </View>
               </View>
             ) : null}
+
             <Text className="text-xs text-gray-500 pt-2 mt-2">
               Al registrarte, aceptas nuestros Términos de Servicio y Política
               de Privacidad
@@ -425,7 +449,7 @@ export default function RegisterScreen() {
           {/* Enlace al Login */}
           <View className="mt-6 flex-row justify-center items-center pb-8">
             <Text className="text-gray-500">¿Ya tienes una cuenta? </Text>
-            <TouchableOpacity>
+            <TouchableOpacity >
               <Text className="text-emerald-500 font-medium">
                 Iniciar sesión
               </Text>
