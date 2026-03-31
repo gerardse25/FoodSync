@@ -1,6 +1,8 @@
 import { router } from "expo-router";
 import {
   ArrowLeft,
+  Check,
+  CircleAlert,
   Eye,
   EyeOff,
 } from "lucide-react-native";
@@ -11,20 +13,184 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 export default function RegisterScreen() {
   const [name, setName] = useState("");
+  const [nameError, setNameError] = useState("");
 
   const [email, setEmail] = useState("");
+  const [emailError, setEmailError] = useState("");
 
   const [password, setPassword] = useState("");
+  const [passwordStarted, setPasswordStarted] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [passwordError, setPasswordError] = useState("");
 
   const [confirmPassword, setConfirmPassword] = useState("");
   const [confirmPasswordStarted, setConfirmPasswordStarted] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [confirmPasswordError, setConfirmPasswordError] = useState("");
 
+  /*
+  function that controls if the name is in the correct format:
+- between 2 and 16 characters
+- no spaces at the beginning or end
+  */
 
-    const passwordInputRef = useRef<TextInput>(null);
+  const isValidName = (name: string) => {
+    const trimmedName = name.trim();
+    return trimmedName.length >= 2 && trimmedName.length <= 16;
+  };
+
+  const handleNameBlur = () => {
+    if (!isValidName(name)) {
+      setNameError("El nombre debe tener entre 2 y 16 caracteres");
+    } else {
+      setNameError("");
+    }
+  };
+
+  /*
+  function that controls if the email is in the correct format:
+  - not longer than 128 characters
+  - no spaces at the beginning or end
+  - contains an "@" symbol
+  - contains a "." after the "@" symbol
+  --future--
+  when we have the db we will chceck if the email is not already in use, and if it is, we will
+  show an error message saying "This email is already in use"
+  */
+  const isValidEmail = (email: string) => {
+    const trimmedEmail = email.trim();
+    if (trimmedEmail.length > 128) {
+      return false;
+    }
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(trimmedEmail);
+  };
+
+  const handleEmailEndEditing = (text: string) => {
+    if (!isValidEmail(text)) {
+      setEmailError("Correo no válido");
+    } else {
+      setEmailError("");
+    }
+  };
+
+  /*function that controls if the password is in the correct format:
+- between 6 and 32 characters
+- at least one uppercase letter
+- at least one lowercase letter
+- at least one number 
+- at least one special character (!@#$%^&*()-+)
+  */
+
+  const getPasswordChecks = (password: string) => {
+    const hasValidLength = password.length >= 6 && password.length <= 32;
+    const hasUppercase = /[A-Z]/.test(password);
+    const hasLowercase = /[a-z]/.test(password);
+    const hasNumber = /\d/.test(password);
+    const hasSpecialChar = /[!@#$%^&*()-+]/.test(password);
+
+    return {
+      length: hasValidLength,
+      upper: hasUppercase,
+      lower: hasLowercase,
+      number: hasNumber,
+      special: hasSpecialChar,
+    };
+  };
+
+  const validatePassword = (pass: string): string => {
+    const checks = getPasswordChecks(pass);
+
+    if (!checks.length) {
+      return "Debe tener entre 6 y 32 caracteres";
+    }
+    if (!checks.upper) {
+      return "Debe contener al menos una mayúscula";
+    }
+    if (!checks.lower) {
+      return "Debe contener al menos una minúscula";
+    }
+    if (!checks.number) {
+      return "Debe contener un número";
+    }
+    if (!checks.special) {
+      return "Debe contener un carácter especial (!@#$%^&*()-+)";
+    }
+
+    return "";
+  };
+
+  const handlePasswordEndEditing = (text: string) => {
+    setPasswordStarted(true);
+    const errorMsg = validatePassword(text);
+    setPasswordError(errorMsg);
+  };
+
+  const handleConfirmPasswordEndEditing = (text: string) => {
+    setConfirmPasswordStarted(true);
+    if (text === "" || text !== password) {
+      setConfirmPasswordError("Las contraseñas no coinciden o están vacías");
+    } else {
+      setConfirmPasswordError("");
+    }
+  };
+
+  const checks = getPasswordChecks(password);
+
+  const handleRegister = () => {
+    const nameValid = isValidName(name);
+    if (!nameValid) {
+      setNameError("El nombre debe tener entre 2 y 16 caracteres");
+    } else {
+      setNameError("");
+    }
+
+    const emailValid = isValidEmail(email);
+    if (!emailValid) {
+      setEmailError("Correo no válido");
+    } else {
+      setEmailError("");
+    }
+
+    const passwordErrorMsg = validatePassword(password);
+    setPasswordStarted(true);
+    if (passwordErrorMsg) {
+      setPasswordError(passwordErrorMsg);
+    } else {
+      setPasswordError("");
+    }
+
+    setConfirmPasswordStarted(true);
+    const passwordsMatch = password === confirmPassword && password.length > 0;
+    if (!passwordsMatch) {
+      setConfirmPasswordError("Las contraseñas no coinciden o están vacías");
+    } else {
+      setConfirmPasswordError("");
+    }
+  };
+
+  type PasswordItemProps = {
+    isValid: boolean;
+    text: string;
+  };
+
+  const PasswordItem = ({ isValid, text }: PasswordItemProps) => {
+    const Icon = isValid ? Check : CircleAlert;
+    const iconColor = isValid ? "#22c55e" : "#ef4444";
+    const textColor = isValid ? "#1eb455" : "#ef4444";
+
+    return (
+      <View className="flex-row items-center gap-2">
+        <Icon color={iconColor} size={16} />
+        <Text style={{ color: textColor }} className="text-sm">
+          {text}
+        </Text>
+      </View>
+    );
+  };
+
+  const passwordInputRef = useRef<TextInput>(null);
   const confirmPasswordInputRef = useRef<TextInput>(null);
-
 
   return (
     <SafeAreaView className="flex-1 bg-[#F8FAF8]">
@@ -62,12 +228,22 @@ export default function RegisterScreen() {
                 value={name}
                 onChangeText={(text) => {
                   setName(text);
-
+                  if (nameError) setNameError("");
                 }}
+                onBlur={handleNameBlur}
                 placeholder="John Doe"
                 placeholderTextColor="#9CA3AF"
+                autoCapitalize="words"
+                textContentType="name"
                 className="h-14 px-4 rounded-2xl bg-gray-100 text-base "
               />
+              {/* Muestra el error del nombre si existe */}
+              {nameError ? (
+                <View className="flex-row gap-2 items-center">
+                  <CircleAlert color="#ef4444" size={16} />
+                  <Text className="text-red-500 text-sm">{nameError}</Text>
+                </View>
+              ) : null}
             </View>
 
             {/* Input: Email */}
@@ -75,7 +251,13 @@ export default function RegisterScreen() {
               <Text className="font-medium text-gray-900">Correo</Text>
               <TextInput
                 value={email}
-                onChangeText={setEmail}
+                onChangeText={(text) => {
+                  setEmail(text);
+                  if (emailError && isValidEmail(text)) {
+                    setEmailError("");
+                  }
+                }}
+                onEndEditing={(e) => handleEmailEndEditing(e.nativeEvent.text)}
                 placeholder="correo@email.com"
                 placeholderTextColor="#9CA3AF"
                 keyboardType="email-address"
@@ -86,6 +268,12 @@ export default function RegisterScreen() {
                 importantForAutofill="yes"
                 className="h-14 px-4 rounded-2xl bg-gray-100 text-base"
               />
+              {emailError ? (
+                <View className="flex-row gap-2 items-center">
+                  <CircleAlert color="#ef4444" size={16} />
+                  <Text className="text-red-500 text-sm">{emailError}</Text>
+                </View>
+              ) : null}
             </View>
 
             {/* Input: Password */}
@@ -94,10 +282,15 @@ export default function RegisterScreen() {
               {/* Contenedor ojo */}
               <View className="justify-center align-middle">
                 <TextInput
+                  ref={passwordInputRef}
                   value={password}
                   onChangeText={(text) => {
                     setPassword(text);
+                    if (!passwordStarted) setPasswordStarted(true);
                   }}
+                  onEndEditing={(e) =>
+                    handlePasswordEndEditing(e.nativeEvent.text)
+                  }
                   placeholder="Crea una contraseña"
                   placeholderTextColor="#9CA3AF"
                   secureTextEntry={!showPassword}
@@ -126,6 +319,31 @@ export default function RegisterScreen() {
                   )}
                 </TouchableOpacity>
               </View>
+              {/* Checklist de requisitos */}
+              {passwordStarted && (
+                <View className="mt-2 space-y-1">
+                  <PasswordItem
+                    isValid={checks.length}
+                    text="Debe tener entre 6 y 32 caracteres"
+                  />
+                  <PasswordItem
+                    isValid={checks.upper}
+                    text="Al menos una letra mayúscula"
+                  />
+                  <PasswordItem
+                    isValid={checks.lower}
+                    text="Al menos una letra minúscula"
+                  />
+                  <PasswordItem
+                    isValid={checks.number}
+                    text="Al menos un número"
+                  />
+                  <PasswordItem
+                    isValid={checks.special}
+                    text="Al menos un caracter especial (!@#$%^&*()-+)"
+                  />
+                </View>
+              )}
             </View>
 
             <View className="space-y-2 mt-4">
@@ -140,7 +358,16 @@ export default function RegisterScreen() {
                     setConfirmPassword(text);
                     if (!confirmPasswordStarted)
                       setConfirmPasswordStarted(true);
+
+                    if (text !== password) {
+                      setConfirmPasswordError("Las contraseñas no coinciden");
+                    } else {
+                      setConfirmPasswordError("");
+                    }
                   }}
+                  onEndEditing={(e) =>
+                    handlePasswordEndEditing(e.nativeEvent.text)
+                  }
                   placeholder="Repite tu contraseña"
                   placeholderTextColor="#9CA3AF"
                   secureTextEntry={!showConfirmPassword}
@@ -168,6 +395,17 @@ export default function RegisterScreen() {
                 </TouchableOpacity>
               </View>
             </View>
+            {/* Checklist de requisitos */}
+            {confirmPasswordStarted && confirmPasswordError ? (
+              <View className="mt-2 space-y-1">
+                <View className="flex-row items-center gap-2">
+                  <CircleAlert color="#ef4444" size={16} />
+                  <Text className="text-red-500 text-sm">
+                    {confirmPasswordError}
+                  </Text>
+                </View>
+              </View>
+            ) : null}
             <Text className="text-xs text-gray-500 pt-2 mt-2">
               Al registrarte, aceptas nuestros Términos de Servicio y Política
               de Privacidad
@@ -176,6 +414,7 @@ export default function RegisterScreen() {
             {/* Botón de Registro */}
             <TouchableOpacity
               className="w-full h-12 bg-emerald-500 rounded-xl flex items-center justify-center mt-6 active:bg-emerald-600"
+              onPress={handleRegister}
             >
               <Text className="text-white text-base font-semibold">
                 Crear una cuenta
@@ -185,8 +424,8 @@ export default function RegisterScreen() {
 
           {/* Enlace al Login */}
           <View className="mt-6 flex-row justify-center items-center pb-8">
-            <Text className="text-gray-500">Ya tienes una cuenta? </Text>
-            <TouchableOpacity >
+            <Text className="text-gray-500">¿Ya tienes una cuenta? </Text>
+            <TouchableOpacity>
               <Text className="text-emerald-500 font-medium">
                 Iniciar sesión
               </Text>
