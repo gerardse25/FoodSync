@@ -1,5 +1,5 @@
 import { router } from "expo-router";
-import { ArrowLeft, Eye, EyeOff } from "lucide-react-native";
+import { ArrowLeft, CircleAlert, Eye, EyeOff } from "lucide-react-native";
 import React, { useRef, useState } from "react";
 import { Text, TextInput, TouchableOpacity, View } from "react-native";
 import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
@@ -7,9 +7,11 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 export default function LoginScreen() {
   const [email, setEmail] = useState("");
+  const [emailError, setEmailError] = useState("");
 
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [passwordError, setPasswordError] = useState("");
 
   const passwordInputRef = useRef<TextInput>(null);
 
@@ -20,6 +22,74 @@ export default function LoginScreen() {
       password: "Usuario123!",
     },
   ];
+
+  /**
+   * Validación de formato de email
+   */
+  const isValidEmail = (email: string) => {
+    const trimmedEmail = email.trim();
+    if (trimmedEmail.length > 128) return false;
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(trimmedEmail);
+  };
+
+  const handleEmailEndEditing = (text: string) => {
+    if (!isValidEmail(text)) {
+      setEmailError("Correo no válido");
+    } else {
+      setEmailError("");
+    }
+  };
+
+  /*
+    * Validación de contraseña (mínimo 6 caracteres para login)
+  */
+  const isValidPassword = (password: string) => {
+    return password.length >= 6;
+  };
+
+  const handlePasswordEndEditing = (text: string) => {
+  if (!isValidPassword(text)) {
+    setPasswordError("La contraseña debe tener al menos 6 caracteres");
+  } else {
+    setPasswordError("");
+  }
+};
+
+  /**
+   * Lógica de Inicio de Sesión
+   */
+  const handleLogin = () => {
+    let isValid = true;
+
+    // Validar Email
+    if (!isValidEmail(email)) {
+      setEmailError("Correo no válido");
+      isValid = false;
+    } else {
+      setEmailError("");
+    }
+
+    // Validar Contraseña (mínimo 6 caracteres para login)
+    if (!isValidPassword(password)) {
+      setPasswordError("La contraseña debe tener al menos 6 caracteres");
+      isValid = false;
+    } else {
+      setPasswordError("");
+    }
+
+    // Buscamos el usuario en nuestra "base de datos" simulada y verificamos la contraseña
+    if (isValid) {
+      const userFound = usersDB.find(
+        (user) => user.email === email.trim() && user.password === password,
+      );
+
+      if (userFound) {
+      } else {
+        setPasswordError("Correo o contraseña incorrectos");
+      }
+    }
+  };
 
   return (
     <SafeAreaView className="flex-1 bg-[#F8FAF8]">
@@ -59,7 +129,9 @@ export default function LoginScreen() {
                 value={email}
                 onChangeText={(text) => {
                   setEmail(text);
+                  if (emailError) setEmailError("");
                 }}
+                onEndEditing={(e) => handleEmailEndEditing(e.nativeEvent.text)}
                 placeholder="correo@email.com"
                 placeholderTextColor="#9CA3AF"
                 keyboardType="email-address"
@@ -67,6 +139,12 @@ export default function LoginScreen() {
                 autoCorrect={false}
                 className="h-14 px-4 rounded-2xl bg-gray-100 text-base"
               />
+              {emailError ? (
+                <View className="flex-row gap-2 items-center">
+                  <CircleAlert color="#ef4444" size={16} />
+                  <Text className="text-red-500 text-sm">{emailError}</Text>
+                </View>
+              ) : null}
             </View>
 
             {/* Input: Password */}
@@ -86,7 +164,9 @@ export default function LoginScreen() {
                   value={password}
                   onChangeText={(text) => {
                     setPassword(text);
+                    if (passwordError) setPasswordError("");
                   }}
+                  onEndEditing={(e) => handlePasswordEndEditing(e.nativeEvent.text)}
                   placeholder="Introduce tu contraseña"
                   placeholderTextColor="#9CA3AF"
                   secureTextEntry={!showPassword}
@@ -116,11 +196,18 @@ export default function LoginScreen() {
                 </TouchableOpacity>
               </View>
 
+              {passwordError ? (
+                <View className="flex-row gap-2 items-center mt-1">
+                  <CircleAlert color="#ef4444" size={16} />
+                  <Text className="text-red-500 text-sm">{passwordError}</Text>
+                </View>
+              ) : null}
             </View>
 
             {/* Botón de Inicio de Sesión */}
             <TouchableOpacity
               className="w-full h-12 bg-emerald-500 rounded-xl flex items-center justify-center mt-8 active:bg-emerald-600 shadow-sm"
+              onPress={handleLogin}
             >
               <Text className="text-white text-base font-semibold">
                 Iniciar sesión
@@ -129,7 +216,7 @@ export default function LoginScreen() {
           </View>
 
           {/* Enlace al Registro */}
-          <View className="mt-6 flex-row justify-center items-center pb-8">
+          <View className="mt-auto flex-row justify-center items-center pb-8">
             <Text className="text-gray-500">¿No tienes cuenta? </Text>
             <TouchableOpacity onPress={() => router.push("/(auth)/register")}>
               <Text className="text-emerald-500 font-bold">Regístrate</Text>
