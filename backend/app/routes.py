@@ -100,9 +100,7 @@ def login(data: app.schemas.LoginSchema, db: Session = Depends(get_db)):
     ):
         raise HTTPException(status_code=401, detail="Credencials incorrectes")
 
-    refresh_token, refresh_expire = app.auth.create_refresh_token(
-        {"sub": str(user.id)}
-    )
+    refresh_token, refresh_expire = app.auth.create_refresh_token({"sub": str(user.id)})
 
     session = app.models.Session(
         user_id=user.id,
@@ -244,8 +242,7 @@ def forgot_password(
 
     return {
         "message": (
-            "Si el correu existeix, rebràs instruccions per "
-            "restablir la contrasenya"
+            "Si el correu existeix, rebràs instruccions per " "restablir la contrasenya"
         )
     }
 

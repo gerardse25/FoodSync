@@ -4,7 +4,9 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://user:pass@localhost:5432/foodsync")
+DATABASE_URL = os.getenv(
+    "DATABASE_URL", "postgresql://user:pass@localhost:5432/foodsync"
+)
 
 SECRET_KEY = os.getenv("SECRET_KEY", "supersecretkey")
 ALGORITHM = "HS256"

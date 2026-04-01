@@ -3,7 +3,9 @@ def test_verify_requires_valid_token(client):
     assert response.status_code in (401, 403)
 
 
-def test_logout_invalidates_current_session_only(client, registered_user, second_session):
+def test_logout_invalidates_current_session_only(
+    client, registered_user, second_session
+):
     logout_response = client.post(
         "/auth/logout",
         headers={"Authorization": f"Bearer {registered_user['access_token']}"},

@@ -1,4 +1,6 @@
-def test_delete_account_invalidates_all_sessions(client, registered_user, second_session):
+def test_delete_account_invalidates_all_sessions(
+    client, registered_user, second_session
+):
     delete_response = client.delete(
         "/auth/delete",
         headers={"Authorization": f"Bearer {registered_user['access_token']}"},
@@ -14,7 +16,10 @@ def test_delete_account_invalidates_all_sessions(client, registered_user, second
     )
 
     assert delete_response.status_code == 200
-    assert delete_response.json()["message"] == "El teu compte s'ha desactivat correctament"
+    assert (
+        delete_response.json()["message"]
+        == "El teu compte s'ha desactivat correctament"
+    )
     assert verify_first.status_code == 401
     assert verify_second.status_code == 401
     assert login_response.status_code == 401

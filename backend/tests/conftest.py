@@ -1,4 +1,3 @@
-
 import importlib
 import sys
 import types
@@ -61,7 +60,9 @@ def app_modules(tmp_path, monkeypatch):
             kwargs.setdefault("connect_args", {"check_same_thread": False})
         return real_create_engine(url, *args, **kwargs)
 
-    monkeypatch.setattr(sqlalchemy, "create_engine", create_engine_for_tests, raising=True)
+    monkeypatch.setattr(
+        sqlalchemy, "create_engine", create_engine_for_tests, raising=True
+    )
 
     database = importlib.import_module("app.database")
     models = importlib.import_module("app.models")
