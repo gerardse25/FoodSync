@@ -1,4 +1,4 @@
-import { Home, Settings } from "lucide-react-native";
+import { Home } from "lucide-react-native";
 import React, { useState } from "react";
 import {
   Alert,
@@ -14,7 +14,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 // Mock data
 const mockHouse = {
   id: "1",
-  name: "Familia LIS",
+  name: "LIS",
   code: "123456",
 };
 
