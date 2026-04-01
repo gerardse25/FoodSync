@@ -1,9 +1,14 @@
-
 import pytest
 
 
-def assert_validation_error(response):
+SUCCESS_REGISTER_CODE = "ACCOUNT_CREATED"
+DUPLICATE_EMAIL_CODE = "EMAIL_ALREADY_REGISTERED"
+
+
+def assert_validation_error(response, expected_code):
     assert response.status_code in (400, 422), response.text
+    body = response.json()
+    assert body["code"] == expected_code
 
 
 def test_register_with_valid_data_creates_user_and_session(client):
@@ -19,6 +24,7 @@ def test_register_with_valid_data_creates_user_and_session(client):
     assert response.status_code == 201
     body = response.json()
     assert body["message"] == "Compte creat correctament"
+    assert body["code"] == SUCCESS_REGISTER_CODE
     assert body["user"]["username"] == "validuser"
     assert body["user"]["email"] == "User@example.com"
     assert isinstance(body["access_token"], str)
@@ -37,26 +43,29 @@ def test_register_rejects_duplicate_email_case_insensitive(client, email):
     )
 
     assert first.status_code == 201
+    assert first.json()["code"] == SUCCESS_REGISTER_CODE
     assert second.status_code == 409
-    assert second.json()["detail"] == "Aquest correu electrònic ja està registrat"
+    body = second.json()
+    assert body["detail"] == "Aquest correu electrònic ja està registrat"
+    assert body["code"] == DUPLICATE_EMAIL_CODE
 
 
 @pytest.mark.parametrize(
-    "email, username, password",
+    "email, username, password, expected_code",
     [
-        ("", "validuser", "Passw0rd"),
-        ("user@example.com", "", "Passw0rd"),
-        ("user@example.com", "validuser", ""),
-        ("", "", ""),
+        ("", "validuser", "Passw0rd", "EMAIL_REQUIRED"),
+        ("user@example.com", "", "Passw0rd", "USERNAME_REQUIRED"),
+        ("user@example.com", "validuser", "", "PASSWORD_REQUIRED"),
+        ("", "", "", "REQUIRED_FIELDS_MISSING"),
     ],
     ids=["empty_email", "empty_username", "empty_password", "all_empty"],
 )
-def test_register_rejects_empty_fields(client, email, username, password):
+def test_register_rejects_empty_fields(client, email, username, password, expected_code):
     response = client.post(
         "/auth/register",
         json={"email": email, "username": username, "password": password},
     )
-    assert_validation_error(response)
+    assert_validation_error(response, expected_code)
 
 
 @pytest.mark.parametrize(
@@ -88,17 +97,18 @@ def test_register_trims_leading_and_trailing_spaces(client, email, username, pas
 
     assert response.status_code == 201, response.text
     body = response.json()
+    assert body["code"] == SUCCESS_REGISTER_CODE
     assert body["user"]["email"] == "user@example.com"
     assert body["user"]["username"] == "validuser"
 
 
 @pytest.mark.parametrize(
-    "email, username, password",
+    "email, username, password, expected_code",
     [
-        ("user @example.com", "validuser", "Passw0rd"),
-        ("user@ example.com", "validuser", "Passw0rd"),
-        ("user@example.com", "valid user", "Passw0rd"),
-        ("user@example.com", "validuser", "Pass word"),
+        ("user @example.com", "validuser", "Passw0rd", "EMAIL_INVALID_CHARACTERS"),
+        ("user@ example.com", "validuser", "Passw0rd", "EMAIL_INVALID_CHARACTERS"),
+        ("user@example.com", "valid user", "Passw0rd", "USERNAME_INVALID_SPACES"),
+        ("user@example.com", "validuser", "Pass word", "PASSWORD_INVALID_SPACES"),
     ],
     ids=[
         "email_space_before_at",
@@ -107,12 +117,12 @@ def test_register_trims_leading_and_trailing_spaces(client, email, username, pas
         "password_internal_space",
     ],
 )
-def test_register_rejects_internal_spaces(client, email, username, password):
+def test_register_rejects_internal_spaces(client, email, username, password, expected_code):
     response = client.post(
         "/auth/register",
         json={"email": email, "username": username, "password": password},
     )
-    assert_validation_error(response)
+    assert_validation_error(response, expected_code)
 
 
 @pytest.mark.parametrize(
@@ -133,37 +143,37 @@ def test_register_rejects_email_with_invalid_format(client, invalid_email):
         "/auth/register",
         json={"email": invalid_email, "username": "validuser", "password": "Passw0rd"},
     )
-    assert_validation_error(response)
+    assert_validation_error(response, "EMAIL_INVALID_FORMAT")
 
 
 @pytest.mark.parametrize(
-    "email, username, password",
+    "email, username, password, expected_code",
     [
-        ("user\n@example.com", "validuser", "Passw0rd"),
-        ("user\t@example.com", "validuser", "Passw0rd"),
-        ("user@example.com", "valid\nuser", "Passw0rd"),
-        ("user@example.com", "valid\tuser", "Passw0rd"),
-        ("user@example.com", "passuser", "pass\nword"),
-        ("user@example.com", "passuser", "pass\tword"),
+        ("user @example.com", "validuser", "Passw0rd", "EMAIL_INVALID_CHARACTERS"),
+        ("user	@example.com", "validuser", "Passw0rd", "EMAIL_INVALID_CHARACTERS"),
+        ("user@example.com", "valid user", "Passw0rd", "USERNAME_INVALID_CHARACTERS"),
+        ("user@example.com", "valid	user", "Passw0rd", "USERNAME_INVALID_CHARACTERS"),
+        ("user@example.com", "passuser", "pass word", "PASSWORD_INVALID_CHARACTERS"),
+        ("user@example.com", "passuser", "pass	word", "PASSWORD_INVALID_CHARACTERS"),
     ],
 )
-def test_register_rejects_control_characters(client, email, username, password):
+def test_register_rejects_control_characters(client, email, username, password, expected_code):
     response = client.post(
         "/auth/register",
         json={"email": email, "username": username, "password": password},
     )
-    assert_validation_error(response)
+    assert_validation_error(response, expected_code)
 
 
 @pytest.mark.parametrize(
     "email, should_be_valid",
     [
         ("a@b.com", True),
-        (("a" * 120) + "@t.com", True),
-        (("a" * 121) + "@t.com", True),
-        (("a" * 122) + "@t.com", True),
-        (("a" * 123) + "@t.com", False),
-        (("a" * 140) + "@t.com", False),
+        ((("a" * 120) + "@t.com"), True),
+        ((("a" * 121) + "@t.com"), True),
+        ((("a" * 122) + "@t.com"), True),
+        ((("a" * 123) + "@t.com"), False),
+        ((("a" * 140) + "@t.com"), False),
     ],
 )
 def test_register_validates_email_length_boundaries(client, email, should_be_valid):
@@ -173,8 +183,9 @@ def test_register_validates_email_length_boundaries(client, email, should_be_val
     )
     if should_be_valid:
         assert response.status_code == 201, response.text
+        assert response.json()["code"] == SUCCESS_REGISTER_CODE
     else:
-        assert_validation_error(response)
+        assert_validation_error(response, "EMAIL_TOO_LONG")
 
 
 @pytest.mark.parametrize(
@@ -198,8 +209,10 @@ def test_register_validates_password_length_boundaries(client, password, should_
     )
     if should_be_valid:
         assert response.status_code == 201, response.text
+        assert response.json()["code"] == SUCCESS_REGISTER_CODE
     else:
-        assert_validation_error(response)
+        code = "PASSWORD_TOO_SHORT" if len(password) < 6 else "PASSWORD_TOO_LONG"
+        assert_validation_error(response, code)
 
 
 @pytest.mark.parametrize(
@@ -209,10 +222,10 @@ def test_register_validates_password_length_boundaries(client, password, should_
         ("ab", True),
         ("abc", True),
         ("validuser", True),
-        ("a" * 15, True),
-        ("a" * 16, True),
-        ("a" * 17, False),
-        ("a" * 25, False),
+        (("a" * 15), True),
+        (("a" * 16), True),
+        (("a" * 17), False),
+        (("a" * 25), False),
     ],
 )
 def test_register_validates_username_length_boundaries(client, username, should_be_valid):
@@ -222,8 +235,10 @@ def test_register_validates_username_length_boundaries(client, username, should_
     )
     if should_be_valid:
         assert response.status_code == 201, response.text
+        assert response.json()["code"] == SUCCESS_REGISTER_CODE
     else:
-        assert_validation_error(response)
+        code = "USERNAME_TOO_SHORT" if len(username) < 2 else "USERNAME_TOO_LONG"
+        assert_validation_error(response, code)
 
 
 def test_register_handles_repository_lookup_failure(unsafe_client):

@@ -3,8 +3,15 @@ from datetime import datetime, timedelta
 import pytest
 
 
-def assert_validation_error(response):
+SUCCESS_PASSWORD_CHANGED_CODE = "PASSWORD_CHANGED"
+PASSWORD_RESET_REQUEST_ACCEPTED_CODE = "PASSWORD_RESET_REQUEST_ACCEPTED"
+PASSWORD_RESET_SUCCESS_CODE = "PASSWORD_RESET_SUCCESS"
+
+
+def assert_validation_error(response, expected_code):
     assert response.status_code in (400, 422), response.text
+    body = response.json()
+    assert body["code"] == expected_code
 
 
 def test_change_password_updates_credentials(client, auth_headers):
@@ -23,6 +30,7 @@ def test_change_password_updates_credentials(client, auth_headers):
     )
 
     assert change_response.status_code == 200
+    assert change_response.json()["code"] == SUCCESS_PASSWORD_CHANGED_CODE
     assert old_login.status_code == 401
     assert new_login.status_code == 200
 
@@ -43,6 +51,7 @@ def test_change_password_persists_new_password_and_old_one_stops_working(client,
     )
 
     assert response.status_code == 200
+    assert response.json()["code"] == SUCCESS_PASSWORD_CHANGED_CODE
     assert old_login.status_code == 401
     assert new_login.status_code == 200
 
@@ -65,25 +74,26 @@ def test_change_password_rejects_same_password(client, auth_headers):
 
     assert response.status_code == 400
     assert response.json()["detail"] == "La nova contrasenya no pot ser igual que l'actual"
+    assert response.json()["code"] == "NEW_PASSWORD_SAME_AS_CURRENT"
 
 
 @pytest.mark.parametrize(
-    "current_password, new_password",
+    "current_password, new_password, expected_code",
     [
-        ("", "NewPass1"),
-        ("Passw0rd", ""),
-        ("", ""),
+        ("", "NewPass1", "CURRENT_PASSWORD_REQUIRED"),
+        ("Passw0rd", "", "NEW_PASSWORD_REQUIRED"),
+        ("", "", "REQUIRED_FIELDS_MISSING"),
     ],
     ids=["empty_current_password", "empty_new_password", "both_empty"],
 )
-def test_change_password_with_empty_fields_returns_error(client, auth_headers, current_password, new_password):
+def test_change_password_with_empty_fields_returns_error(client, auth_headers, current_password, new_password, expected_code):
     response = client.post(
         "/auth/change-password",
         headers=auth_headers,
         json={"current_password": current_password, "new_password": new_password},
     )
 
-    assert_validation_error(response)
+    assert_validation_error(response, expected_code)
 
 
 @pytest.mark.parametrize(
@@ -118,38 +128,40 @@ def test_change_password_length_validation(client, auth_headers, new_password, e
 
     if expected:
         assert response.status_code == 200, response.text
+        assert response.json()["code"] == SUCCESS_PASSWORD_CHANGED_CODE
     else:
-        assert_validation_error(response)
+        code = "NEW_PASSWORD_TOO_SHORT" if len(new_password) < 6 else "NEW_PASSWORD_TOO_LONG"
+        assert_validation_error(response, code)
 
 
 @pytest.mark.parametrize(
-    "current_password, new_password",
+    "current_password, new_password, expected_code",
     [
-        ("Pass word", "NewPass1"),
-        ("Passw0rd", "New Pass1"),
+        ("Pass word", "NewPass1", "CURRENT_PASSWORD_INVALID_SPACES"),
+        ("Passw0rd", "New Pass1", "NEW_PASSWORD_INVALID_SPACES"),
     ],
     ids=[
         "current_password_internal_space",
         "new_password_internal_space",
     ],
 )
-def test_change_password_rejects_internal_spaces(client, auth_headers, current_password, new_password):
+def test_change_password_rejects_internal_spaces(client, auth_headers, current_password, new_password, expected_code):
     response = client.post(
         "/auth/change-password",
         headers=auth_headers,
         json={"current_password": current_password, "new_password": new_password},
     )
 
-    assert_validation_error(response)
+    assert_validation_error(response, expected_code)
 
 
 @pytest.mark.parametrize(
-    "current_password, new_password",
+    "current_password, new_password, expected_code",
     [
-        ("Pass\nword", "NewPass1"),
-        ("Passw0rd", "New\nPass1"),
-        ("Pass\tword", "NewPass1"),
-        ("Passw0rd", "New\tPass1"),
+        ("Pass word", "NewPass1", "CURRENT_PASSWORD_INVALID_CHARACTERS"),
+        ("Passw0rd", "New Pass1", "NEW_PASSWORD_INVALID_CHARACTERS"),
+        ("Pass	word", "NewPass1", "CURRENT_PASSWORD_INVALID_CHARACTERS"),
+        ("Passw0rd", "New Pass1", "NEW_PASSWORD_INVALID_CHARACTERS"),
     ],
     ids=[
         "current_password_newline",
@@ -158,14 +170,14 @@ def test_change_password_rejects_internal_spaces(client, auth_headers, current_p
         "new_password_tab",
     ],
 )
-def test_change_password_rejects_control_characters(client, auth_headers, current_password, new_password):
+def test_change_password_rejects_control_characters(client, auth_headers, current_password, new_password, expected_code):
     response = client.post(
         "/auth/change-password",
         headers=auth_headers,
         json={"current_password": current_password, "new_password": new_password},
     )
 
-    assert_validation_error(response)
+    assert_validation_error(response, expected_code)
 
 
 @pytest.mark.parametrize(
@@ -191,6 +203,7 @@ def test_change_password_trims_leading_and_trailing_spaces(client, auth_headers,
     )
 
     assert response.status_code == 200, response.text
+    assert response.json()["code"] == SUCCESS_PASSWORD_CHANGED_CODE
 
     old_login = client.post(
         "/auth/login",
@@ -289,7 +302,9 @@ def test_forgot_password_creates_reset_token_and_returns_generic_message(client,
     response = client.post("/auth/forgot-password", json={"email": "user@example.com"})
 
     assert response.status_code == 200
-    assert response.json()["message"] == "Si el correu existeix, rebràs instruccions per restablir la contrasenya"
+    body = response.json()
+    assert body["message"] == "Si el correu existeix, rebràs instruccions per restablir la contrasenya"
+    assert body["code"] == PASSWORD_RESET_REQUEST_ACCEPTED_CODE
     assert len(client.sent_emails) == 1
     assert client.sent_emails[0]["to_email"] == "user@example.com"
 
@@ -312,7 +327,9 @@ def test_reset_password_invalidates_existing_sessions(client, registered_user):
     )
 
     assert forgot_response.status_code == 200
+    assert forgot_response.json()["code"] == PASSWORD_RESET_REQUEST_ACCEPTED_CODE
     assert reset_response.status_code == 200
+    assert reset_response.json()["code"] == PASSWORD_RESET_SUCCESS_CODE
     assert verify_old_session.status_code == 401
     assert login_new_password.status_code == 200
 
@@ -336,3 +353,4 @@ def test_reset_password_rejects_expired_token(client, registered_user):
 
     assert response.status_code == 400
     assert response.json()["detail"] == "Token invàlid o caducat"
+    assert response.json()["code"] == "RESET_TOKEN_INVALID_OR_EXPIRED"

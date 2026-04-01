@@ -1,8 +1,14 @@
 import pytest
 
 
-def assert_validation_error(response):
+SUCCESS_LOGIN_CODE = "LOGIN_SUCCESS"
+INVALID_CREDENTIALS_CODE = "INVALID_CREDENTIALS"
+
+
+def assert_validation_error(response, expected_code):
     assert response.status_code in (400, 422), response.text
+    body = response.json()
+    assert body["code"] == expected_code
 
 
 def test_login_with_valid_credentials_returns_tokens(client, registered_user):
@@ -14,6 +20,7 @@ def test_login_with_valid_credentials_returns_tokens(client, registered_user):
     assert response.status_code == 200
     body = response.json()
     assert body["message"] == "Inici de sessió exitós"
+    assert body["code"] == SUCCESS_LOGIN_CODE
     assert body["user"]["email"] == "user@example.com"
     assert isinstance(body["access_token"], str)
     assert isinstance(body["refresh_token"], str)
@@ -26,7 +33,9 @@ def test_login_with_invalid_password_returns_generic_error(client, registered_us
     )
 
     assert response.status_code == 401
-    assert response.json()["detail"] == "Credencials incorrectes"
+    body = response.json()
+    assert body["detail"] == "Credencials incorrectes"
+    assert body["code"] == INVALID_CREDENTIALS_CODE
 
 
 def test_login_with_non_existing_email_returns_error(client):
@@ -36,7 +45,9 @@ def test_login_with_non_existing_email_returns_error(client):
     )
 
     assert response.status_code == 401
-    assert response.json()["detail"] == "Credencials incorrectes"
+    body = response.json()
+    assert body["detail"] == "Credencials incorrectes"
+    assert body["code"] == INVALID_CREDENTIALS_CODE
 
 
 def test_login_email_is_case_insensitive(client):
@@ -56,25 +67,27 @@ def test_login_email_is_case_insensitive(client):
     )
 
     assert response.status_code == 200
-    assert response.json()["user"]["email"] == "registered@example.com"
+    body = response.json()
+    assert body["code"] == SUCCESS_LOGIN_CODE
+    assert body["user"]["email"] == "registered@example.com"
 
 
 @pytest.mark.parametrize(
-    "email, password",
+    "email, password, expected_code",
     [
-        ("", "Passw0rd"),
-        ("registered@example.com", ""),
-        ("", ""),
+        ("", "Passw0rd", "EMAIL_REQUIRED"),
+        ("registered@example.com", "", "PASSWORD_REQUIRED"),
+        ("", "", "REQUIRED_FIELDS_MISSING"),
     ],
     ids=["empty_email", "empty_password", "all_empty"],
 )
-def test_login_with_empty_fields_returns_error(client, email, password):
+def test_login_with_empty_fields_returns_error(client, email, password, expected_code):
     response = client.post(
         "/auth/login",
         json={"email": email, "password": password},
     )
 
-    assert_validation_error(response)
+    assert_validation_error(response, expected_code)
 
 
 @pytest.mark.parametrize(
@@ -104,15 +117,15 @@ def test_login_with_invalid_email_format_returns_validation_error(client, invali
         json={"email": invalid_email, "password": "Passw0rd"},
     )
 
-    assert_validation_error(response)
+    assert_validation_error(response, "EMAIL_INVALID_FORMAT")
 
 
 @pytest.mark.parametrize(
-    "email, password",
+    "email, password, expected_code",
     [
-        ("user @example.com", "Passw0rd"),
-        ("user@ example.com", "Passw0rd"),
-        ("user@example.com", "Pass word"),
+        ("user @example.com", "Passw0rd", "EMAIL_INVALID_CHARACTERS"),
+        ("user@ example.com", "Passw0rd", "EMAIL_INVALID_CHARACTERS"),
+        ("user@example.com", "Pass word", "PASSWORD_INVALID_SPACES"),
     ],
     ids=[
         "email_space_before_at",
@@ -120,22 +133,22 @@ def test_login_with_invalid_email_format_returns_validation_error(client, invali
         "password_internal_space",
     ],
 )
-def test_login_rejects_internal_spaces(client, email, password):
+def test_login_rejects_internal_spaces(client, email, password, expected_code):
     response = client.post(
         "/auth/login",
         json={"email": email, "password": password},
     )
 
-    assert_validation_error(response)
+    assert_validation_error(response, expected_code)
 
 
 @pytest.mark.parametrize(
-    "email, password",
+    "email, password, expected_code",
     [
-        ("user\n@example.com", "Passw0rd"),
-        ("user\t@example.com", "Passw0rd"),
-        ("user@example.com", "Pass\nw0rd"),
-        ("user@example.com", "Pass\tw0rd"),
+        ("user @example.com", "Passw0rd", "EMAIL_INVALID_CHARACTERS"),
+        ("user	@example.com", "Passw0rd", "EMAIL_INVALID_CHARACTERS"),
+        ("user@example.com", "Pass w0rd", "PASSWORD_INVALID_CHARACTERS"),
+        ("user@example.com", "Pass	w0rd", "PASSWORD_INVALID_CHARACTERS"),
     ],
     ids=[
         "email_newline",
@@ -144,13 +157,13 @@ def test_login_rejects_internal_spaces(client, email, password):
         "password_tab",
     ],
 )
-def test_login_rejects_control_characters(client, email, password):
+def test_login_rejects_control_characters(client, email, password, expected_code):
     response = client.post(
         "/auth/login",
         json={"email": email, "password": password},
     )
 
-    assert_validation_error(response)
+    assert_validation_error(response, expected_code)
 
 
 @pytest.mark.parametrize(
@@ -187,7 +200,9 @@ def test_login_trims_leading_and_trailing_spaces(client, email, password):
     )
 
     assert response.status_code == 200, response.text
-    assert response.json()["user"]["email"] == "registered@example.com"
+    body = response.json()
+    assert body["code"] == SUCCESS_LOGIN_CODE
+    assert body["user"]["email"] == "registered@example.com"
 
 
 def test_login_does_not_reveal_if_email_exists(client, registered_user):
@@ -204,6 +219,8 @@ def test_login_does_not_reveal_if_email_exists(client, registered_user):
     assert wrong_password_response.status_code == 401
     assert missing_email_response.json()["detail"] == "Credencials incorrectes"
     assert wrong_password_response.json()["detail"] == "Credencials incorrectes"
+    assert missing_email_response.json()["code"] == INVALID_CREDENTIALS_CODE
+    assert wrong_password_response.json()["code"] == INVALID_CREDENTIALS_CODE
 
 
 def test_login_handles_repository_user_lookup_failure(unsafe_client):
@@ -290,4 +307,6 @@ def test_login_rejects_deleted_user(client, registered_user, auth_headers):
 
     assert delete_response.status_code == 200
     assert login_response.status_code == 401
-    assert login_response.json()["detail"] == "Credencials incorrectes"
+    body = login_response.json()
+    assert body["detail"] == "Credencials incorrectes"
+    assert body["code"] == INVALID_CREDENTIALS_CODE
