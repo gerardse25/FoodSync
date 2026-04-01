@@ -43,10 +43,11 @@ jobs:
       - name: Check Python syntax
         run: python -m compileall .
 
-      - name: Run tests if present
+      - name: Install backend test dependencies
         run: |
-          if find . -type f \( -path "*/tests/*.py" -o -name "test_*.py" -o -name "*_test.py" \) | grep -q .; then
-            pytest
-          else
-            echo "No tests found yet. Skipping pytest."
-          fi
+          python -m pip install --upgrade pip
+          pip install fastapi pytest httpx sqlalchemy python-jose "passlib[bcrypt]" email-validator python-dotenv
+
+      - name: Run auth register test
+        run: |
+          python -m pytest backend/tests/auth/test_register.py -q
