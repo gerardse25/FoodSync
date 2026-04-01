@@ -1,7 +1,7 @@
 import {
   Copy,
+  Crown,
   Home,
-  Settings,
   Users,
 } from "lucide-react-native";
 import React, { useState } from "react";
@@ -13,6 +13,7 @@ import {
   TouchableOpacity,
   View,
   Platform,
+  Image,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import * as Clipboard from "expo-clipboard";
@@ -30,19 +31,21 @@ export default function HouseholdScreen() {
         name: "Usuario",
         email: "usuario@gmail.com",
         role: "owner",
+        avatar: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e",
       },
       {
         id: "2",
         name: "Usuario2",
         email: "usuario2@example.com",
         role: "member",
+        avatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330",
       },
       {
         id: "3",
         name: "Usuario3",
         email: "usuario3@example.com",
         role: "member",
-      },
+        avatar: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e",      },
     ],
   };
 
@@ -207,6 +210,57 @@ export default function HouseholdScreen() {
           <Text className="text-xs text-gray-500 text-center mt-1">
             Comparte este código para invitar a familiares a tu hogar
           </Text>
+        </View>
+                {/* Miembros */}
+        <View className="mb-8">
+          <View className="flex-row items-center justify-between mb-4 px-1">
+            <Text className="text-lg font-bold text-gray-900">Miembros</Text>
+          </View>
+
+          <View className="space-y-4">
+            {currentHousehold.members.map((member) => (
+              <View
+                key={member.id}
+                className="flex-row items-center justify-between p-4 bg-white rounded-2xl border border-gray-100 shadow-sm mb-4"
+              >
+                <View className="flex-row items-center gap-3">
+                  <Image
+                    source={{ uri: member.avatar }}
+                    className="w-12 h-12 rounded-full bg-gray-200"
+                  />
+                  <View>
+                    <View className="flex-row items-center gap-1.5">
+                      <Text className="font-bold text-base text-gray-900">
+                        {member.name}
+                      </Text>
+                      {member.role === "owner" && (
+                        <Crown color="#F59E0B" size={16} />
+                      )}
+                    </View>
+                    <Text className="text-sm text-gray-500 mt-0.5">
+                      {member.email}
+                    </Text>
+                  </View>
+                </View>
+
+                <View
+                  className={`px-2.5 py-1 rounded-lg ${
+                    member.role === "owner" ? "bg-emerald-100" : "bg-gray-100"
+                  }`}
+                >
+                  <Text
+                    className={`text-xs font-bold uppercase ${
+                      member.role === "owner"
+                        ? "text-emerald-700"
+                        : "text-gray-600"
+                    }`}
+                  >
+                    {member.role === "owner" ? "Admin" : "Miembro"}
+                  </Text>
+                </View>
+              </View>
+            ))}
+          </View>
         </View>
 
       </ScrollView>
