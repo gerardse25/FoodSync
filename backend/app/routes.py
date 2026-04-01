@@ -8,6 +8,7 @@ import app.auth
 import app.models
 import app.schemas
 from app.database import get_db
+#from app.home_models import Home, HomeMembership
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -16,6 +17,8 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 def register(data: app.schemas.RegisterSchema, db: Session = Depends(get_db)):
     try:
         normalized_email = app.auth.normalize_email(data.email)
+        normalized_username = app.auth.normalize_username(data.username)
+        normalized_password = app.auth.normalize_password(data.password)
     except ValueError as err:
         raise HTTPException(status_code=400, detail=str(err)) from err
 
@@ -32,17 +35,16 @@ def register(data: app.schemas.RegisterSchema, db: Session = Depends(get_db)):
         )
 
     new_user = app.models.User(
-        username=data.username.strip(),
+        username=normalized_username,
         email=data.email.strip(),
         email_normalized=normalized_email,
-        password_hash=app.auth.hash_password(data.password),
+        password_hash=app.auth.hash_password(normalized_password),
     )
 
     db.add(new_user)
     db.commit()
     db.refresh(new_user)
 
-    access_token = app.auth.create_access_token({"sub": str(new_user.id)})
     refresh_token, refresh_expire = app.auth.create_refresh_token(
         {"sub": str(new_user.id)}
     )
@@ -55,6 +57,11 @@ def register(data: app.schemas.RegisterSchema, db: Session = Depends(get_db)):
     )
     db.add(session)
     db.commit()
+    db.refresh(session)
+
+    access_token = app.auth.create_access_token(
+        {"sub": str(new_user.id), "sid": str(session.id)}
+    )
 
     return {
         "message": "Compte creat correctament",
@@ -72,6 +79,7 @@ def register(data: app.schemas.RegisterSchema, db: Session = Depends(get_db)):
 def login(data: app.schemas.LoginSchema, db: Session = Depends(get_db)):
     try:
         normalized_email = app.auth.normalize_email(data.email)
+        normalized_password = app.auth.normalize_password(data.password)
     except ValueError as err:
         raise HTTPException(
             status_code=401,
@@ -87,7 +95,7 @@ def login(data: app.schemas.LoginSchema, db: Session = Depends(get_db)):
         .first()
     )
 
-    if not user or not app.auth.verify_password(data.password, user.password_hash):
+    if not user or not app.auth.verify_password(normalized_password, user.password_hash):
         raise HTTPException(status_code=401, detail="Credencials incorrectes")
 
     refresh_token, refresh_expire = app.auth.create_refresh_token({"sub": str(user.id)})
@@ -144,7 +152,9 @@ def refresh_token(data: app.schemas.RefreshSchema, db: Session = Depends(get_db)
     if not session:
         raise HTTPException(status_code=401, detail="Sessió no vàlida")
 
-    new_access = app.auth.create_access_token({"sub": user_id})
+    new_access = app.auth.create_access_token(
+        {"sub": str(session.user_id), "sid": str(session.id)}
+    )
     return {"access_token": new_access}
 
 
@@ -230,7 +240,7 @@ def forgot_password(
 
     return {
         "message": (
-            "Si el correu existeix, rebràs instruccions per " "restablir la contrasenya"
+            "Si el correu existeix, rebràs instruccions per restablir la contrasenya"
         )
     }
 
@@ -243,13 +253,19 @@ def change_password(
 ):
     user, _session = current
 
-    if not app.auth.verify_password(data.current_password, user.password_hash):
+    try:
+        current_password = app.auth.normalize_password(data.current_password)
+        new_password = app.auth.normalize_password(data.new_password)
+    except ValueError as err:
+        raise HTTPException(status_code=400, detail=str(err)) from err
+
+    if not app.auth.verify_password(current_password, user.password_hash):
         raise HTTPException(
             status_code=400,
             detail="La contrasenya actual és incorrecta",
         )
 
-    user.password_hash = app.auth.hash_password(data.new_password)
+    user.password_hash = app.auth.hash_password(new_password)
     db.commit()
 
     return {"message": "Contrasenya actualitzada correctament"}
@@ -291,7 +307,12 @@ def reset_password(
         db.commit()
         raise HTTPException(status_code=400, detail="Token invàlid o caducat")
 
-    user.password_hash = app.auth.hash_password(data.new_password)
+    try:
+        new_password = app.auth.normalize_password(data.new_password)
+    except ValueError as err:
+        raise HTTPException(status_code=400, detail=str(err)) from err
+
+    user.password_hash = app.auth.hash_password(new_password)
     token_row.used = True
 
     active_sessions = (
@@ -317,6 +338,43 @@ def delete_account(
     db: Session = Depends(get_db),
 ):
     user, _session = current
+
+    active_membership = (
+        db.query(HomeMembership)
+        .filter(
+            HomeMembership.user_id == user.id,
+            HomeMembership.is_active,
+        )
+        .first()
+    )
+
+    if active_membership:
+        home = (
+            db.query(Home)
+            .filter(Home.id == active_membership.home_id, Home.is_active)
+            .first()
+        )
+        now = datetime.utcnow()
+
+        if home and active_membership.role == "owner":
+            all_memberships = (
+                db.query(HomeMembership)
+                .filter(
+                    HomeMembership.home_id == home.id,
+                    HomeMembership.is_active,
+                )
+                .all()
+            )
+            for membership in all_memberships:
+                membership.is_active = False
+                membership.left_at = now
+            home.is_active = False
+            home.updated_at = now
+        else:
+            active_membership.is_active = False
+            active_membership.left_at = now
+            if home:
+                home.updated_at = now
 
     user.is_active = False
 
