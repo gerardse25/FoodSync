@@ -8,7 +8,6 @@ import app.auth
 import app.models
 import app.schemas
 from app.database import get_db
-#from app.home_models import Home, HomeMembership
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -62,11 +61,6 @@ def register(data: app.schemas.RegisterSchema, db: Session = Depends(get_db)):
     access_token = app.auth.create_access_token(
         {"sub": str(new_user.id), "sid": str(session.id)}
     )
-    db.refresh(session)
-
-    access_token = app.auth.create_access_token(
-        {"sub": str(new_user.id), "sid": str(session.id)}
-    )
 
     return {
         "message": "Compte creat correctament",
@@ -100,10 +94,15 @@ def login(data: app.schemas.LoginSchema, db: Session = Depends(get_db)):
         .first()
     )
 
-    if not user or not app.auth.verify_password(normalized_password, user.password_hash):
+    if not user or not app.auth.verify_password(
+        normalized_password,
+        user.password_hash,
+    ):
         raise HTTPException(status_code=401, detail="Credencials incorrectes")
 
-    refresh_token, refresh_expire = app.auth.create_refresh_token({"sub": str(user.id)})
+    refresh_token, refresh_expire = app.auth.create_refresh_token(
+        {"sub": str(user.id)}
+    )
 
     session = app.models.Session(
         user_id=user.id,
@@ -220,7 +219,7 @@ def forgot_password(
             db.query(app.models.PasswordResetToken)
             .filter(
                 app.models.PasswordResetToken.user_id == user.id,
-                app.models.PasswordResetToken.used.is_(False),
+                not app.models.PasswordResetToken.used,
             )
             .all()
         )
@@ -245,7 +244,8 @@ def forgot_password(
 
     return {
         "message": (
-            "Si el correu existeix, rebràs instruccions per restablir la contrasenya"
+            "Si el correu existeix, rebràs instruccions per "
+            "restablir la contrasenya"
         )
     }
 
@@ -273,7 +273,7 @@ def change_password(
     if current_password == new_password:
         raise HTTPException(
             status_code=400,
-            detail="La nova contrasenya no pot ser igual a l'actual",
+            detail="La nova contrasenya no pot ser igual que l'actual",
         )
 
     user.password_hash = app.auth.hash_password(new_password)
@@ -291,7 +291,7 @@ def reset_password(
         db.query(app.models.PasswordResetToken)
         .filter(
             app.models.PasswordResetToken.token == data.token,
-            app.models.PasswordResetToken.used.is_(False),
+            not app.models.PasswordResetToken.used,
         )
         .first()
     )
@@ -349,43 +349,6 @@ def delete_account(
     db: Session = Depends(get_db),
 ):
     user, _session = current
-
-    active_membership = (
-        db.query(HomeMembership)
-        .filter(
-            HomeMembership.user_id == user.id,
-            HomeMembership.is_active,
-        )
-        .first()
-    )
-
-    if active_membership:
-        home = (
-            db.query(Home)
-            .filter(Home.id == active_membership.home_id, Home.is_active)
-            .first()
-        )
-        now = datetime.utcnow()
-
-        if home and active_membership.role == "owner":
-            all_memberships = (
-                db.query(HomeMembership)
-                .filter(
-                    HomeMembership.home_id == home.id,
-                    HomeMembership.is_active,
-                )
-                .all()
-            )
-            for membership in all_memberships:
-                membership.is_active = False
-                membership.left_at = now
-            home.is_active = False
-            home.updated_at = now
-        else:
-            active_membership.is_active = False
-            active_membership.left_at = now
-            if home:
-                home.updated_at = now
 
     user.is_active = False
 
