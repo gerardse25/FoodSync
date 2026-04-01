@@ -1,4 +1,8 @@
-import { Home } from "lucide-react-native";
+import {
+  Copy,
+  Home,
+  Users,
+} from "lucide-react-native";
 import React, { useState } from "react";
 import {
   Alert,
@@ -10,12 +14,34 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import * as Clipboard from "expo-clipboard";
 
 // Mock data
 const mockHouse = {
-  id: "1",
-  name: "LIS",
-  code: "123456",
+    id: "1",
+    name: "LIS",
+    code: "123456",
+    createdBy: "Usuario",
+    members: [
+      {
+        id: "1",
+        name: "Usuario",
+        email: "usuario@gmail.com",
+        role: "owner",
+      },
+      {
+        id: "2",
+        name: "Usuario2",
+        email: "usuario2@example.com",
+        role: "member",
+      },
+      {
+        id: "3",
+        name: "Usuario3",
+        email: "usuario3@example.com",
+        role: "member",
+      },
+    ],
 };
 
 export default function HouseholdScreen() {
@@ -49,6 +75,18 @@ export default function HouseholdScreen() {
           "El código introducido no es válido. Comprueba que esté bien escrito.",
         );
       }
+    }
+  };
+
+// function for copy the code to clipboard
+  const copyInviteCode = async () => {
+    if (currentHousehold?.code) {
+      await Clipboard.setStringAsync(currentHousehold.code); 
+      
+      Alert.alert(
+        "Código copiado",
+        `El código ${currentHousehold.code} se ha copiado al portapapeles.`,
+      );
     }
   };
 
@@ -163,9 +201,47 @@ export default function HouseholdScreen() {
         contentContainerStyle={{ padding: 24, paddingBottom: 40 }}
         showsVerticalScrollIndicator={false}
       >
-        <Text className="text-2xl font-bold text-gray-900 mb-2">
-          Bienvenido a {currentHousehold.name}
-        </Text>
+        {/* Tarjeta del Hogar */}
+        <View className="p-6 bg-emerald-50 border border-emerald-100 rounded-3xl mb-6 shadow-sm">
+          <View className="flex-row items-start justify-between mb-5">
+            <View className="flex-row items-center gap-4">
+              <View className="w-14 h-14 bg-emerald-500 rounded-2xl flex items-center justify-center shadow-sm">
+                <Users color="white" size={28} />
+              </View>
+              <View>
+                <Text className="font-bold text-xl text-gray-900">
+                  {currentHousehold.name}
+                </Text>
+                <Text className="text-emerald-600 font-medium mt-0.5">
+                  {currentHousehold.members.length} miembros
+                </Text>
+              </View>
+            </View>
+          </View>
+
+          {/* Caja del Código de Invitación */}
+          <View className="bg-white/90 rounded-2xl p-4 mb-3 flex-row items-center justify-between border border-emerald-50">
+            <View>
+              <Text className="text-xs text-gray-500 mb-1 font-medium">
+                Código de invitación
+              </Text>
+              <Text className="font-bold text-xl tracking-widest text-gray-900">
+                {currentHousehold.code}
+              </Text>
+            </View>
+            <TouchableOpacity
+              className="flex-row items-center bg-gray-100 px-3 py-2 rounded-xl active:bg-gray-200"
+              onPress={copyInviteCode}
+            >
+              <Copy color="#4B5563" size={16} />
+              <Text className="font-semibold text-gray-700 ml-2">Copiar</Text>
+            </TouchableOpacity>
+          </View>
+
+          <Text className="text-xs text-gray-500 text-center mt-1">
+            Comparte este código para invitar a familiares a tu hogar
+          </Text>
+        </View>
       </ScrollView>
     </SafeAreaView>
   );
