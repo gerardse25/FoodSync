@@ -49,13 +49,8 @@ class RegisterSchema(BaseModel):
 
 
 class LoginSchema(BaseModel):
-    email: EmailStr
+    email: str
     password: str
-
-    @field_validator("password")
-    @classmethod
-    def validate_password(cls, value: str) -> str:
-        return _validate_text(value, "password", 6, 32)
 
 
 class RefreshSchema(BaseModel):
@@ -82,26 +77,11 @@ class ChangePasswordSchema(BaseModel):
     current_password: str
     new_password: str
 
-    @field_validator("current_password")
-    @classmethod
-    def validate_current_password(cls, value: str) -> str:
-        return _validate_text(value, "current_password", 6, 32)
-
-    @field_validator("new_password")
-    @classmethod
-    def validate_new_password(cls, value: str) -> str:
-        return _validate_text(value, "new_password", 6, 32)
-
 
 class ForgotPasswordSchema(BaseModel):
-    email: EmailStr
+    email: str
 
 
 class ResetPasswordSchema(BaseModel):
     token: str
     new_password: str
-
-    @field_validator("new_password")
-    @classmethod
-    def validate_new_password(cls, value: str) -> str:
-        return _validate_text(value, "new_password", 6, 32)
