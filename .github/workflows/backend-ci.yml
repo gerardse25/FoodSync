@@ -10,6 +10,10 @@ jobs:
   python-quality:
     runs-on: ubuntu-latest
 
+    defaults:
+      run:
+        working-directory: backend
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -32,7 +36,7 @@ jobs:
             pip install -r requirements-dev.txt
           fi
 
-          pip install ruff black pytest
+          pip install fastapi sqlalchemy python-jose passlib[bcrypt] python-dotenv email-validator httpx pytest ruff black
 
       - name: Lint with Ruff
         run: ruff check .
