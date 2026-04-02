@@ -1,6 +1,5 @@
 import pytest
 
-
 SUCCESS_REGISTER_CODE = "ACCOUNT_CREATED"
 DUPLICATE_EMAIL_CODE = "EMAIL_ALREADY_REGISTERED"
 
@@ -35,7 +34,11 @@ def test_register_with_valid_data_creates_user_and_session(client):
 def test_register_rejects_duplicate_email_case_insensitive(client, email):
     first = client.post(
         "/auth/register",
-        json={"username": "validuser", "email": "user@example.com", "password": "Passw0rd"},
+        json={
+            "username": "validuser",
+            "email": "user@example.com",
+            "password": "Passw0rd",
+        },
     )
     second = client.post(
         "/auth/register",
@@ -60,7 +63,9 @@ def test_register_rejects_duplicate_email_case_insensitive(client, email):
     ],
     ids=["empty_email", "empty_username", "empty_password", "all_empty"],
 )
-def test_register_rejects_empty_fields(client, email, username, password, expected_code):
+def test_register_rejects_empty_fields(
+    client, email, username, password, expected_code
+):
     response = client.post(
         "/auth/register",
         json={"email": email, "username": username, "password": password},
@@ -117,7 +122,9 @@ def test_register_trims_leading_and_trailing_spaces(client, email, username, pas
         "password_internal_space",
     ],
 )
-def test_register_rejects_internal_spaces(client, email, username, password, expected_code):
+def test_register_rejects_internal_spaces(
+    client, email, username, password, expected_code
+):
     response = client.post(
         "/auth/register",
         json={"email": email, "username": username, "password": password},
@@ -157,7 +164,9 @@ def test_register_rejects_email_with_invalid_format(client, invalid_email):
         ("user@example.com", "passuser", "pass	word", "PASSWORD_INVALID_CHARACTERS"),
     ],
 )
-def test_register_rejects_control_characters(client, email, username, password, expected_code):
+def test_register_rejects_control_characters(
+    client, email, username, password, expected_code
+):
     response = client.post(
         "/auth/register",
         json={"email": email, "username": username, "password": password},
@@ -202,10 +211,16 @@ def test_register_validates_email_length_boundaries(client, email, should_be_val
         ("a" * 40, False),
     ],
 )
-def test_register_validates_password_length_boundaries(client, password, should_be_valid):
+def test_register_validates_password_length_boundaries(
+    client, password, should_be_valid
+):
     response = client.post(
         "/auth/register",
-        json={"email": "user@example.com", "username": "validuser", "password": password},
+        json={
+            "email": "user@example.com",
+            "username": "validuser",
+            "password": password,
+        },
     )
     if should_be_valid:
         assert response.status_code == 201, response.text
@@ -228,10 +243,16 @@ def test_register_validates_password_length_boundaries(client, password, should_
         (("a" * 25), False),
     ],
 )
-def test_register_validates_username_length_boundaries(client, username, should_be_valid):
+def test_register_validates_username_length_boundaries(
+    client, username, should_be_valid
+):
     response = client.post(
         "/auth/register",
-        json={"email": "user@example.com", "username": username, "password": "Passw0rd"},
+        json={
+            "email": "user@example.com",
+            "username": username,
+            "password": "Passw0rd",
+        },
     )
     if should_be_valid:
         assert response.status_code == 201, response.text
@@ -259,7 +280,11 @@ def test_register_handles_repository_lookup_failure(unsafe_client):
 
     response = unsafe_client.post(
         "/auth/register",
-        json={"email": "user@example.com", "username": "validuser", "password": "Passw0rd"},
+        json={
+            "email": "user@example.com",
+            "username": "validuser",
+            "password": "Passw0rd",
+        },
     )
 
     assert response.status_code == 500
@@ -295,7 +320,11 @@ def test_register_handles_repository_save_failure(unsafe_client):
 
     response = unsafe_client.post(
         "/auth/register",
-        json={"email": "user@example.com", "username": "validuser", "password": "Passw0rd"},
+        json={
+            "email": "user@example.com",
+            "username": "validuser",
+            "password": "Passw0rd",
+        },
     )
 
     assert response.status_code == 500

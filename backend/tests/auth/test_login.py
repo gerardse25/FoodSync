@@ -1,6 +1,5 @@
 import pytest
 
-
 SUCCESS_LOGIN_CODE = "LOGIN_SUCCESS"
 INVALID_CREDENTIALS_CODE = "INVALID_CREDENTIALS"
 
@@ -111,7 +110,9 @@ def test_login_with_empty_fields_returns_error(client, email, password, expected
         "missing_dot_in_domain",
     ],
 )
-def test_login_with_invalid_email_format_returns_validation_error(client, invalid_email):
+def test_login_with_invalid_email_format_returns_validation_error(
+    client, invalid_email
+):
     response = client.post(
         "/auth/login",
         json={"email": invalid_email, "password": "Passw0rd"},

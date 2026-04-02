@@ -2,7 +2,6 @@ from datetime import datetime, timedelta
 
 import pytest
 
-
 SUCCESS_PASSWORD_CHANGED_CODE = "PASSWORD_CHANGED"
 PASSWORD_RESET_REQUEST_ACCEPTED_CODE = "PASSWORD_RESET_REQUEST_ACCEPTED"
 PASSWORD_RESET_SUCCESS_CODE = "PASSWORD_RESET_SUCCESS"
@@ -35,7 +34,9 @@ def test_change_password_updates_credentials(client, auth_headers):
     assert new_login.status_code == 200
 
 
-def test_change_password_persists_new_password_and_old_one_stops_working(client, auth_headers):
+def test_change_password_persists_new_password_and_old_one_stops_working(
+    client, auth_headers
+):
     response = client.post(
         "/auth/change-password",
         headers=auth_headers,
@@ -73,7 +74,9 @@ def test_change_password_rejects_same_password(client, auth_headers):
     )
 
     assert response.status_code == 400
-    assert response.json()["detail"] == "La nova contrasenya no pot ser igual que l'actual"
+    assert (
+        response.json()["detail"] == "La nova contrasenya no pot ser igual que l'actual"
+    )
     assert response.json()["code"] == "NEW_PASSWORD_SAME_AS_CURRENT"
 
 
@@ -86,7 +89,9 @@ def test_change_password_rejects_same_password(client, auth_headers):
     ],
     ids=["empty_current_password", "empty_new_password", "both_empty"],
 )
-def test_change_password_with_empty_fields_returns_error(client, auth_headers, current_password, new_password, expected_code):
+def test_change_password_with_empty_fields_returns_error(
+    client, auth_headers, current_password, new_password, expected_code
+):
     response = client.post(
         "/auth/change-password",
         headers=auth_headers,
@@ -119,7 +124,9 @@ def test_change_password_with_empty_fields_returns_error(client, auth_headers, c
         "above_max",
     ],
 )
-def test_change_password_length_validation(client, auth_headers, new_password, expected):
+def test_change_password_length_validation(
+    client, auth_headers, new_password, expected
+):
     response = client.post(
         "/auth/change-password",
         headers=auth_headers,
@@ -130,7 +137,11 @@ def test_change_password_length_validation(client, auth_headers, new_password, e
         assert response.status_code == 200, response.text
         assert response.json()["code"] == SUCCESS_PASSWORD_CHANGED_CODE
     else:
-        code = "NEW_PASSWORD_TOO_SHORT" if len(new_password) < 6 else "NEW_PASSWORD_TOO_LONG"
+        code = (
+            "NEW_PASSWORD_TOO_SHORT"
+            if len(new_password) < 6
+            else "NEW_PASSWORD_TOO_LONG"
+        )
         assert_validation_error(response, code)
 
 
@@ -145,7 +156,9 @@ def test_change_password_length_validation(client, auth_headers, new_password, e
         "new_password_internal_space",
     ],
 )
-def test_change_password_rejects_internal_spaces(client, auth_headers, current_password, new_password, expected_code):
+def test_change_password_rejects_internal_spaces(
+    client, auth_headers, current_password, new_password, expected_code
+):
     response = client.post(
         "/auth/change-password",
         headers=auth_headers,
@@ -170,7 +183,9 @@ def test_change_password_rejects_internal_spaces(client, auth_headers, current_p
         "new_password_tab",
     ],
 )
-def test_change_password_rejects_control_characters(client, auth_headers, current_password, new_password, expected_code):
+def test_change_password_rejects_control_characters(
+    client, auth_headers, current_password, new_password, expected_code
+):
     response = client.post(
         "/auth/change-password",
         headers=auth_headers,
@@ -195,7 +210,9 @@ def test_change_password_rejects_control_characters(client, auth_headers, curren
         "new_password_trailing_space",
     ],
 )
-def test_change_password_trims_leading_and_trailing_spaces(client, auth_headers, current_password, new_password):
+def test_change_password_trims_leading_and_trailing_spaces(
+    client, auth_headers, current_password, new_password
+):
     response = client.post(
         "/auth/change-password",
         headers=auth_headers,
@@ -243,7 +260,9 @@ def test_change_password_handles_session_lookup_failure(unsafe_client, registere
     assert response.status_code == 500
 
 
-def test_change_password_handles_password_update_failure(unsafe_client, registered_user):
+def test_change_password_handles_password_update_failure(
+    unsafe_client, registered_user
+):
     routes = unsafe_client.app_modules["routes"]
 
     class FakeUser:
@@ -279,7 +298,9 @@ def test_change_password_handles_password_update_failure(unsafe_client, register
     def fake_get_current_user():
         return {"sub": str(registered_user["user"]["id"])}
 
-    unsafe_client.app.dependency_overrides[original_get_current_user] = fake_get_current_user
+    unsafe_client.app.dependency_overrides[original_get_current_user] = (
+        fake_get_current_user
+    )
 
     try:
         auth.verify_password = lambda plain, hashed: True
@@ -298,19 +319,26 @@ def test_change_password_handles_password_update_failure(unsafe_client, register
     assert response.status_code == 500
 
 
-def test_forgot_password_creates_reset_token_and_returns_generic_message(client, registered_user):
+def test_forgot_password_creates_reset_token_and_returns_generic_message(
+    client, registered_user
+):
     response = client.post("/auth/forgot-password", json={"email": "user@example.com"})
 
     assert response.status_code == 200
     body = response.json()
-    assert body["message"] == "Si el correu existeix, rebràs instruccions per restablir la contrasenya"
+    assert (
+        body["message"]
+        == "Si el correu existeix, rebràs instruccions per restablir la contrasenya"
+    )
     assert body["code"] == PASSWORD_RESET_REQUEST_ACCEPTED_CODE
     assert len(client.sent_emails) == 1
     assert client.sent_emails[0]["to_email"] == "user@example.com"
 
 
 def test_reset_password_invalidates_existing_sessions(client, registered_user):
-    forgot_response = client.post("/auth/forgot-password", json={"email": "user@example.com"})
+    forgot_response = client.post(
+        "/auth/forgot-password", json={"email": "user@example.com"}
+    )
     token = client.sent_emails[0]["token"]
 
     reset_response = client.post(
@@ -340,7 +368,11 @@ def test_reset_password_rejects_expired_token(client, registered_user):
 
     session = client.db_session_factory()
     try:
-        token_row = session.query(client.models.PasswordResetToken).filter_by(token=token).first()
+        token_row = (
+            session.query(client.models.PasswordResetToken)
+            .filter_by(token=token)
+            .first()
+        )
         token_row.expires_at = datetime.utcnow() - timedelta(minutes=1)
         session.commit()
     finally:

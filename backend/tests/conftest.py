@@ -1,4 +1,3 @@
-
 import importlib
 import sys
 import types
@@ -6,7 +5,6 @@ from pathlib import Path
 
 import pytest
 from fastapi.testclient import TestClient
-
 
 BACKEND_ROOT = Path(__file__).resolve().parents[1]
 if str(BACKEND_ROOT) not in sys.path:
@@ -47,7 +45,7 @@ def app_modules(tmp_path, monkeypatch):
     config_mod.FRONTEND_RESET_URL = "http://localhost:3000/reset-password"
     config_mod.PASSWORD_RESET_EXPIRE_MINUTES = 30
     sys.modules["app.config"] = config_mod
-    setattr(app_pkg, "config", config_mod)
+    app_pkg.config = config_mod
 
     # Ajustos de compatibilitat per executar el backend original sobre SQLite.
     import sqlalchemy
@@ -62,7 +60,9 @@ def app_modules(tmp_path, monkeypatch):
             kwargs.setdefault("connect_args", {"check_same_thread": False})
         return real_create_engine(url, *args, **kwargs)
 
-    monkeypatch.setattr(sqlalchemy, "create_engine", create_engine_for_tests, raising=True)
+    monkeypatch.setattr(
+        sqlalchemy, "create_engine", create_engine_for_tests, raising=True
+    )
 
     database = importlib.import_module("app.database")
     models = importlib.import_module("app.models")

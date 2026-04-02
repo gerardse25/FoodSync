@@ -77,7 +77,9 @@ def test_closing_one_session_does_not_invalidate_other_active_sessions(
     assert second_verify.status_code == 200
 
 
-def test_logout_invalidates_current_session_only(client, registered_user, second_session):
+def test_logout_invalidates_current_session_only(
+    client, registered_user, second_session
+):
     logout_response = client.post(
         "/auth/logout",
         headers={"Authorization": f"Bearer {registered_user['access_token']}"},
@@ -110,7 +112,9 @@ def test_refresh_returns_new_access_token_for_active_session(client, registered_
     assert verify_response.status_code == 200
 
 
-def test_get_current_user_handles_session_storage_failure(unsafe_client, registered_user):
+def test_get_current_user_handles_session_storage_failure(
+    unsafe_client, registered_user
+):
     routes = unsafe_client.app_modules["routes"]
 
     class BrokenSessionLookup:
