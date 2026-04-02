@@ -1,6 +1,6 @@
 import re
-from datetime import datetime
 import uuid
+from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import JSONResponse
@@ -24,6 +24,7 @@ def _login_validation_response(code: str, detail: str, status_code: int = 400):
         },
     )
 
+
 EMAIL_REGEX = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 
 
@@ -44,6 +45,7 @@ def _is_valid_email_format(email: str) -> bool:
 
     return True
 
+
 def _validate_login_input(email: str, password: str):
     raw_email = email if email is not None else ""
     raw_password = password if password is not None else ""
@@ -52,68 +54,113 @@ def _validate_login_input(email: str, password: str):
     trimmed_password = raw_password.strip()
 
     if not trimmed_email and not trimmed_password:
-        return None, None, _login_validation_response(
-            "REQUIRED_FIELDS_MISSING",
-            "Cal informar correu i contrasenya",
+        return (
+            None,
+            None,
+            _login_validation_response(
+                "REQUIRED_FIELDS_MISSING",
+                "Cal informar correu i contrasenya",
+            ),
         )
 
     if not trimmed_email:
-        return None, None, _login_validation_response(
-            "EMAIL_REQUIRED",
-            "El correu és obligatori",
+        return (
+            None,
+            None,
+            _login_validation_response(
+                "EMAIL_REQUIRED",
+                "El correu és obligatori",
+            ),
         )
 
     if not trimmed_password:
-        return None, None, _login_validation_response(
-            "PASSWORD_REQUIRED",
-            "La contrasenya és obligatòria",
+        return (
+            None,
+            None,
+            _login_validation_response(
+                "PASSWORD_REQUIRED",
+                "La contrasenya és obligatòria",
+            ),
         )
 
     if len(trimmed_email) > 128:
-        return None, None, _login_validation_response(
-            "EMAIL_INVALID_FORMAT",
-            "El format del correu és invàlid",
+        return (
+            None,
+            None,
+            _login_validation_response(
+                "EMAIL_INVALID_FORMAT",
+                "El format del correu és invàlid",
+            ),
         )
 
-    if app.auth._contains_control_characters(trimmed_email) or app.auth._contains_escape_sequences(trimmed_email):
-        return None, None, _login_validation_response(
-            "EMAIL_INVALID_CHARACTERS",
-            "El correu conté caràcters no permesos",
+    if app.auth._contains_control_characters(
+        trimmed_email
+    ) or app.auth._contains_escape_sequences(trimmed_email):
+        return (
+            None,
+            None,
+            _login_validation_response(
+                "EMAIL_INVALID_CHARACTERS",
+                "El correu conté caràcters no permesos",
+            ),
         )
 
     if any(ch.isspace() for ch in trimmed_email):
-        return None, None, _login_validation_response(
-            "EMAIL_INVALID_CHARACTERS",
-            "El correu conté caràcters no permesos",
+        return (
+            None,
+            None,
+            _login_validation_response(
+                "EMAIL_INVALID_CHARACTERS",
+                "El correu conté caràcters no permesos",
+            ),
         )
 
     if not _is_valid_email_format(trimmed_email):
-        return None, None, _login_validation_response(
-            "EMAIL_INVALID_FORMAT",
-            "El format del correu és invàlid",
+        return (
+            None,
+            None,
+            _login_validation_response(
+                "EMAIL_INVALID_FORMAT",
+                "El format del correu és invàlid",
+            ),
         )
 
-    if app.auth._contains_control_characters(trimmed_password) or app.auth._contains_escape_sequences(trimmed_password):
-        return None, None, _login_validation_response(
-            "PASSWORD_INVALID_CHARACTERS",
-            "La contrasenya conté caràcters no permesos",
+    if app.auth._contains_control_characters(
+        trimmed_password
+    ) or app.auth._contains_escape_sequences(trimmed_password):
+        return (
+            None,
+            None,
+            _login_validation_response(
+                "PASSWORD_INVALID_CHARACTERS",
+                "La contrasenya conté caràcters no permesos",
+            ),
         )
 
     # Els tests classifiquen aquests casos com INVALID_CHARACTERS
     if "  " in trimmed_password or " w0" in trimmed_password:
-        return None, None, _login_validation_response(
-            "PASSWORD_INVALID_CHARACTERS",
-            "La contrasenya conté caràcters no permesos",
+        return (
+            None,
+            None,
+            _login_validation_response(
+                "PASSWORD_INVALID_CHARACTERS",
+                "La contrasenya conté caràcters no permesos",
+            ),
         )
 
     if any(ch.isspace() for ch in trimmed_password):
-        return None, None, _login_validation_response(
-            "PASSWORD_INVALID_SPACES",
-            "La contrasenya no pot contenir espais interns",
+        return (
+            None,
+            None,
+            _login_validation_response(
+                "PASSWORD_INVALID_SPACES",
+                "La contrasenya no pot contenir espais interns",
+            ),
         )
 
     normalized_email = trimmed_email.lower()
     return normalized_email, trimmed_password, None
+
 
 @router.post("/register", status_code=status.HTTP_201_CREATED)
 def register(data: app.schemas.RegisterSchema, db: Session = Depends(get_db)):
