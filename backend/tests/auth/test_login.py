@@ -124,8 +124,8 @@ def test_login_with_invalid_email_format_returns_validation_error(
 @pytest.mark.parametrize(
     "email, password, expected_code",
     [
-        ("user @example.com", "Passw0rd", "EMAIL_INVALID_CHARACTERS"),
-        ("user@ example.com", "Passw0rd", "EMAIL_INVALID_CHARACTERS"),
+        ("user @example.com", "Passw0rd", "EMAIL_INVALID_SPACES"),
+        ("user@ example.com", "Passw0rd", "EMAIL_INVALID_SPACES"),
         ("user@example.com", "Pass word", "PASSWORD_INVALID_SPACES"),
     ],
     ids=[
@@ -146,10 +146,10 @@ def test_login_rejects_internal_spaces(client, email, password, expected_code):
 @pytest.mark.parametrize(
     "email, password, expected_code",
     [
-        ("user @example.com", "Passw0rd", "EMAIL_INVALID_CHARACTERS"),
-        ("user	@example.com", "Passw0rd", "EMAIL_INVALID_CHARACTERS"),
-        ("user@example.com", "Pass w0rd", "PASSWORD_INVALID_CHARACTERS"),
-        ("user@example.com", "Pass	w0rd", "PASSWORD_INVALID_CHARACTERS"),
+        ("user\n@example.com", "Passw0rd", "EMAIL_INVALID_CHARACTERS"),
+        ("user\t@example.com", "Passw0rd", "EMAIL_INVALID_CHARACTERS"),
+        ("user@example.com", "Pass\nw0rd", "PASSWORD_INVALID_CHARACTERS"),
+        ("user@example.com", "Pass\tw0rd", "PASSWORD_INVALID_CHARACTERS"),
     ],
     ids=[
         "email_newline",
