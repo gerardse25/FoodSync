@@ -34,18 +34,8 @@ def _validate_text(value: str, field_name: str, min_len: int, max_len: int) -> s
 
 class RegisterSchema(BaseModel):
     username: str
-    email: EmailStr
+    email: str
     password: str
-
-    @field_validator("username")
-    @classmethod
-    def validate_username(cls, value: str) -> str:
-        return _validate_text(value, "username", 2, 16)
-
-    @field_validator("password")
-    @classmethod
-    def validate_password(cls, value: str) -> str:
-        return _validate_text(value, "password", 6, 32)
 
 
 class LoginSchema(BaseModel):
