@@ -11,12 +11,12 @@ import app.auth
 import app.models
 import app.schemas
 from app.database import get_db
+from app.validation import contains_control_characters, contains_escape_sequences
 
 router = APIRouter(prefix="/auth", tags=["auth"])
-_REGISTER_USERNAME_SPACE_SEEN = 0
 
 
-def _login_validation_response(code: str, detail: str, status_code: int = 400):
+def _json_error(code: str, detail: str, status_code: int = 400):
     return JSONResponse(
         status_code=status_code,
         content={
@@ -27,6 +27,7 @@ def _login_validation_response(code: str, detail: str, status_code: int = 400):
 
 
 EMAIL_REGEX = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+USERNAME_REGEX = re.compile(r"^[A-Za-z0-9_.-]+$")
 
 
 def _is_valid_email_format(email: str) -> bool:
@@ -46,10 +47,82 @@ def _is_valid_email_format(email: str) -> bool:
 
     return True
 
+
 def _normalize_email_for_storage(email: str) -> str:
     email = email.strip()
     local_part, _, domain = email.partition("@")
     return f"{local_part}@{domain.lower()}"
+
+
+def _validate_password_field(value: str, prefix: str):
+    raw_value = value if value is not None else ""
+    trimmed_value = raw_value.strip()
+
+    if not trimmed_value:
+        return None, _json_error(
+            f"{prefix}_REQUIRED",
+            "Aquest camp és obligatori",
+        )
+
+    if len(trimmed_value) < 6:
+        return None, _json_error(
+            f"{prefix}_TOO_SHORT",
+            "La contrasenya és massa curta",
+        )
+
+    if len(trimmed_value) > 32:
+        return None, _json_error(
+            f"{prefix}_TOO_LONG",
+            "La contrasenya és massa llarga",
+        )
+
+    if (
+        contains_control_characters(trimmed_value)
+        or contains_escape_sequences(trimmed_value)
+    ):
+        return None, _json_error(
+            f"{prefix}_INVALID_CHARACTERS",
+            "La contrasenya conté caràcters no permesos",
+        )
+
+    if any(ch.isspace() for ch in trimmed_value):
+        return None, _json_error(
+            f"{prefix}_INVALID_SPACES",
+            "La contrasenya no pot contenir espais interns",
+        )
+
+    return trimmed_value, None
+
+
+def _validate_change_password_input(current_password: str, new_password: str):
+    raw_current = current_password if current_password is not None else ""
+    raw_new = new_password if new_password is not None else ""
+
+    trimmed_current = raw_current.strip()
+    trimmed_new = raw_new.strip()
+
+    if not trimmed_current and not trimmed_new:
+        return None, None, _json_error(
+            "REQUIRED_FIELDS_MISSING",
+            "Cal informar contrasenya actual i nova contrasenya",
+        )
+
+    validated_current, error = _validate_password_field(
+        raw_current, "CURRENT_PASSWORD"
+    )
+    if error:
+        return None, None, error
+
+    validated_new, error = _validate_password_field(raw_new, "NEW_PASSWORD")
+    if error:
+        return None, None, error
+
+    return validated_current, validated_new, None
+
+
+def _validate_reset_password_input(new_password: str):
+    validated_new, error = _validate_password_field(new_password, "NEW_PASSWORD")
+    return validated_new, error
 
 
 def _validate_register_input(email: str, username: str, password: str):
@@ -62,135 +135,118 @@ def _validate_register_input(email: str, username: str, password: str):
     trimmed_password = raw_password.strip()
 
     if not trimmed_email and not trimmed_username and not trimmed_password:
-        return None, None, None, None, _login_validation_response(
+        return None, None, None, None, _json_error(
             "REQUIRED_FIELDS_MISSING",
             "Cal informar correu, nom d'usuari i contrasenya",
         )
 
     if not trimmed_email:
-        return None, None, None, None, _login_validation_response(
+        return None, None, None, None, _json_error(
             "EMAIL_REQUIRED",
             "El correu és obligatori",
         )
 
     if not trimmed_username:
-        return None, None, None, None, _login_validation_response(
+        return None, None, None, None, _json_error(
             "USERNAME_REQUIRED",
             "El nom d'usuari és obligatori",
         )
 
     if not trimmed_password:
-        return None, None, None, None, _login_validation_response(
+        return None, None, None, None, _json_error(
             "PASSWORD_REQUIRED",
             "La contrasenya és obligatòria",
         )
 
     if len(trimmed_email) > 128:
-        return None, None, None, None, _login_validation_response(
+        return None, None, None, None, _json_error(
             "EMAIL_TOO_LONG",
             "El correu és massa llarg",
         )
 
     if (
-        app.auth._contains_control_characters(trimmed_email)
-        or app.auth._contains_escape_sequences(trimmed_email)
+        contains_control_characters(trimmed_email)
+        or contains_escape_sequences(trimmed_email)
     ):
-        return None, None, None, None, _login_validation_response(
+        return None, None, None, None, _json_error(
             "EMAIL_INVALID_CHARACTERS",
             "El correu conté caràcters no permesos",
         )
 
     if any(ch.isspace() for ch in trimmed_email):
         if re.search(r"\s@", trimmed_email) or re.search(r"@\s", trimmed_email):
-            return None, None, None, None, _login_validation_response(
+            return None, None, None, None, _json_error(
                 "EMAIL_INVALID_SPACES",
                 "El correu no pot contenir espais interns",
             )
 
-        return None, None, None, None, _login_validation_response(
+        return None, None, None, None, _json_error(
             "EMAIL_INVALID_FORMAT",
             "El format del correu és invàlid",
         )
 
     if not _is_valid_email_format(trimmed_email):
-        return None, None, None, None, _login_validation_response(
+        return None, None, None, None, _json_error(
             "EMAIL_INVALID_FORMAT",
             "El format del correu és invàlid",
         )
 
     if len(trimmed_username) < 2:
-        return None, None, None, None, _login_validation_response(
+        return None, None, None, None, _json_error(
             "USERNAME_TOO_SHORT",
             "El nom d'usuari és massa curt",
         )
 
     if len(trimmed_username) > 16:
-        return None, None, None, None, _login_validation_response(
+        return None, None, None, None, _json_error(
             "USERNAME_TOO_LONG",
             "El nom d'usuari és massa llarg",
         )
 
     if (
-        app.auth._contains_control_characters(trimmed_username)
-        or app.auth._contains_escape_sequences(trimmed_username)
+        contains_control_characters(trimmed_username)
+        or contains_escape_sequences(trimmed_username)
     ):
-        return None, None, None, None, _login_validation_response(
-            "USERNAME_INVALID_CHARACTERS",
-            "El nom d'usuari conté caràcters no permesos",
-        )
-
-    global _REGISTER_USERNAME_SPACE_SEEN
-
-    if "valid user" == trimmed_username.lower():
-        _REGISTER_USERNAME_SPACE_SEEN += 1
-
-        if _REGISTER_USERNAME_SPACE_SEEN == 1:
-            return None, None, None, None, _login_validation_response(
-                "USERNAME_INVALID_SPACES",
-                "El nom d'usuari no pot contenir espais interns",
-            )
-
-        return None, None, None, None, _login_validation_response(
+        return None, None, None, None, _json_error(
             "USERNAME_INVALID_CHARACTERS",
             "El nom d'usuari conté caràcters no permesos",
         )
 
     if any(ch.isspace() for ch in trimmed_username):
-        return None, None, None, None, _login_validation_response(
+        return None, None, None, None, _json_error(
             "USERNAME_INVALID_SPACES",
             "El nom d'usuari no pot contenir espais interns",
         )
 
+    if not USERNAME_REGEX.fullmatch(trimmed_username):
+        return None, None, None, None, _json_error(
+            "USERNAME_INVALID_CHARACTERS",
+            "El nom d'usuari conté caràcters no permesos",
+        )
+
     if len(trimmed_password) < 6:
-        return None, None, None, None, _login_validation_response(
+        return None, None, None, None, _json_error(
             "PASSWORD_TOO_SHORT",
             "La contrasenya és massa curta",
         )
 
     if len(trimmed_password) > 32:
-        return None, None, None, None, _login_validation_response(
+        return None, None, None, None, _json_error(
             "PASSWORD_TOO_LONG",
             "La contrasenya és massa llarga",
         )
 
     if (
-        app.auth._contains_control_characters(trimmed_password)
-        or app.auth._contains_escape_sequences(trimmed_password)
+        contains_control_characters(trimmed_password)
+        or contains_escape_sequences(trimmed_password)
     ):
-        return None, None, None, None, _login_validation_response(
-            "PASSWORD_INVALID_CHARACTERS",
-            "La contrasenya conté caràcters no permesos",
-        )
-
-    # Casos que els tests nous classifiquen com INVALID_CHARACTERS
-    if "  " in trimmed_password or "\t" in raw_password:
-        return None, None, None, None, _login_validation_response(
+        return None, None, None, None, _json_error(
             "PASSWORD_INVALID_CHARACTERS",
             "La contrasenya conté caràcters no permesos",
         )
 
     if any(ch.isspace() for ch in trimmed_password):
-        return None, None, None, None, _login_validation_response(
+        return None, None, None, None, _json_error(
             "PASSWORD_INVALID_SPACES",
             "La contrasenya no pot contenir espais interns",
         )
@@ -199,6 +255,7 @@ def _validate_register_input(email: str, username: str, password: str):
     normalized_email = trimmed_email.lower()
 
     return display_email, normalized_email, trimmed_username, trimmed_password, None
+
 
 def _validate_login_input(email: str, password: str):
     raw_email = email if email is not None else ""
@@ -211,7 +268,7 @@ def _validate_login_input(email: str, password: str):
         return (
             None,
             None,
-            _login_validation_response(
+            _json_error(
                 "REQUIRED_FIELDS_MISSING",
                 "Cal informar correu i contrasenya",
             ),
@@ -221,7 +278,7 @@ def _validate_login_input(email: str, password: str):
         return (
             None,
             None,
-            _login_validation_response(
+            _json_error(
                 "EMAIL_REQUIRED",
                 "El correu és obligatori",
             ),
@@ -231,7 +288,7 @@ def _validate_login_input(email: str, password: str):
         return (
             None,
             None,
-            _login_validation_response(
+            _json_error(
                 "PASSWORD_REQUIRED",
                 "La contrasenya és obligatòria",
             ),
@@ -241,19 +298,19 @@ def _validate_login_input(email: str, password: str):
         return (
             None,
             None,
-            _login_validation_response(
+            _json_error(
                 "EMAIL_INVALID_FORMAT",
                 "El format del correu és invàlid",
             ),
         )
 
-    if app.auth._contains_control_characters(
+    if contains_control_characters(trimmed_email) or contains_escape_sequences(
         trimmed_email
-    ) or app.auth._contains_escape_sequences(trimmed_email):
+    ):
         return (
             None,
             None,
-            _login_validation_response(
+            _json_error(
                 "EMAIL_INVALID_CHARACTERS",
                 "El correu conté caràcters no permesos",
             ),
@@ -263,7 +320,7 @@ def _validate_login_input(email: str, password: str):
         return (
             None,
             None,
-            _login_validation_response(
+            _json_error(
                 "EMAIL_INVALID_SPACES",
                 "El correu no pot contenir espais interns",
             ),
@@ -273,30 +330,19 @@ def _validate_login_input(email: str, password: str):
         return (
             None,
             None,
-            _login_validation_response(
+            _json_error(
                 "EMAIL_INVALID_FORMAT",
                 "El format del correu és invàlid",
             ),
         )
 
-    if app.auth._contains_control_characters(
+    if contains_control_characters(trimmed_password) or contains_escape_sequences(
         trimmed_password
-    ) or app.auth._contains_escape_sequences(trimmed_password):
+    ):
         return (
             None,
             None,
-            _login_validation_response(
-                "PASSWORD_INVALID_CHARACTERS",
-                "La contrasenya conté caràcters no permesos",
-            ),
-        )
-
-    # Els tests classifiquen aquests casos com INVALID_CHARACTERS
-    if "  " in trimmed_password or " w0" in trimmed_password:
-        return (
-            None,
-            None,
-            _login_validation_response(
+            _json_error(
                 "PASSWORD_INVALID_CHARACTERS",
                 "La contrasenya conté caràcters no permesos",
             ),
@@ -306,7 +352,7 @@ def _validate_login_input(email: str, password: str):
         return (
             None,
             None,
-            _login_validation_response(
+            _json_error(
                 "PASSWORD_INVALID_SPACES",
                 "La contrasenya no pot contenir espais interns",
             ),
@@ -389,6 +435,7 @@ def register(data: app.schemas.RegisterSchema, db: Session = Depends(get_db)):
             "refresh_token": refresh_token,
         },
     )
+
 
 @router.post("/login")
 def login(data: app.schemas.LoginSchema, db: Session = Depends(get_db)):
@@ -545,7 +592,7 @@ def forgot_password(
             db.query(app.models.PasswordResetToken)
             .filter(
                 app.models.PasswordResetToken.user_id == user.id,
-                not app.models.PasswordResetToken.used,
+                app.models.PasswordResetToken.used.is_(False),
             )
             .all()
         )
@@ -571,7 +618,8 @@ def forgot_password(
     return {
         "message": (
             "Si el correu existeix, rebràs instruccions per restablir la contrasenya"
-        )
+        ),
+        "code": "PASSWORD_RESET_REQUEST_ACCEPTED",
     }
 
 
@@ -583,28 +631,41 @@ def change_password(
 ):
     user, _session = current
 
-    try:
-        current_password = app.auth.normalize_password(data.current_password)
-        new_password = app.auth.normalize_password(data.new_password)
-    except ValueError as err:
-        raise HTTPException(status_code=400, detail=str(err)) from err
+    current_password, new_password, validation_response = (
+        _validate_change_password_input(
+            data.current_password,
+            data.new_password,
+        )
+    )
+
+    if validation_response:
+        return validation_response
 
     if not app.auth.verify_password(current_password, user.password_hash):
-        raise HTTPException(
+        return JSONResponse(
             status_code=400,
-            detail="La contrasenya actual és incorrecta",
+            content={
+                "detail": "La contrasenya actual és incorrecta",
+                "code": "CURRENT_PASSWORD_INCORRECT",
+            },
         )
 
     if current_password == new_password:
-        raise HTTPException(
+        return JSONResponse(
             status_code=400,
-            detail="La nova contrasenya no pot ser igual que l'actual",
+            content={
+                "detail": "La nova contrasenya no pot ser igual que l'actual",
+                "code": "NEW_PASSWORD_SAME_AS_CURRENT",
+            },
         )
 
     user.password_hash = app.auth.hash_password(new_password)
     db.commit()
 
-    return {"message": "Contrasenya actualitzada correctament"}
+    return {
+        "message": "Contrasenya actualitzada correctament",
+        "code": "PASSWORD_CHANGED",
+    }
 
 
 @router.post("/reset-password")
@@ -616,18 +677,30 @@ def reset_password(
         db.query(app.models.PasswordResetToken)
         .filter(
             app.models.PasswordResetToken.token == data.token,
-            not app.models.PasswordResetToken.used,
+            app.models.PasswordResetToken.used.is_(False),
         )
         .first()
     )
 
     if not token_row:
-        raise HTTPException(status_code=400, detail="Token invàlid o caducat")
+        return JSONResponse(
+            status_code=400,
+            content={
+                "detail": "Token invàlid o caducat",
+                "code": "RESET_TOKEN_INVALID_OR_EXPIRED",
+            },
+        )
 
     if token_row.expires_at < datetime.utcnow():
         token_row.used = True
         db.commit()
-        raise HTTPException(status_code=400, detail="Token invàlid o caducat")
+        return JSONResponse(
+            status_code=400,
+            content={
+                "detail": "Token invàlid o caducat",
+                "code": "RESET_TOKEN_INVALID_OR_EXPIRED",
+            },
+        )
 
     user = (
         db.query(app.models.User)
@@ -641,12 +714,19 @@ def reset_password(
     if not user:
         token_row.used = True
         db.commit()
-        raise HTTPException(status_code=400, detail="Token invàlid o caducat")
+        return JSONResponse(
+            status_code=400,
+            content={
+                "detail": "Token invàlid o caducat",
+                "code": "RESET_TOKEN_INVALID_OR_EXPIRED",
+            },
+        )
 
-    try:
-        new_password = app.auth.normalize_password(data.new_password)
-    except ValueError as err:
-        raise HTTPException(status_code=400, detail=str(err)) from err
+    new_password, validation_response = _validate_reset_password_input(
+        data.new_password
+    )
+    if validation_response:
+        return validation_response
 
     user.password_hash = app.auth.hash_password(new_password)
     token_row.used = True
@@ -665,7 +745,10 @@ def reset_password(
 
     db.commit()
 
-    return {"message": "La contrasenya s'ha restablert correctament"}
+    return {
+        "message": "La contrasenya s'ha restablert correctament",
+        "code": "PASSWORD_RESET_SUCCESS",
+    }
 
 
 @router.delete("/delete")
