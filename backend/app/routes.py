@@ -76,9 +76,8 @@ def _validate_password_field(value: str, prefix: str):
             "La contrasenya és massa llarga",
         )
 
-    if (
-        contains_control_characters(trimmed_value)
-        or contains_escape_sequences(trimmed_value)
+    if contains_control_characters(trimmed_value) or contains_escape_sequences(
+        trimmed_value
     ):
         return None, _json_error(
             f"{prefix}_INVALID_CHARACTERS",
@@ -102,14 +101,16 @@ def _validate_change_password_input(current_password: str, new_password: str):
     trimmed_new = raw_new.strip()
 
     if not trimmed_current and not trimmed_new:
-        return None, None, _json_error(
-            "REQUIRED_FIELDS_MISSING",
-            "Cal informar contrasenya actual i nova contrasenya",
+        return (
+            None,
+            None,
+            _json_error(
+                "REQUIRED_FIELDS_MISSING",
+                "Cal informar contrasenya actual i nova contrasenya",
+            ),
         )
 
-    validated_current, error = _validate_password_field(
-        raw_current, "CURRENT_PASSWORD"
-    )
+    validated_current, error = _validate_password_field(raw_current, "CURRENT_PASSWORD")
     if error:
         return None, None, error
 
@@ -135,120 +136,225 @@ def _validate_register_input(email: str, username: str, password: str):
     trimmed_password = raw_password.strip()
 
     if not trimmed_email and not trimmed_username and not trimmed_password:
-        return None, None, None, None, _json_error(
-            "REQUIRED_FIELDS_MISSING",
-            "Cal informar correu, nom d'usuari i contrasenya",
+        return (
+            None,
+            None,
+            None,
+            None,
+            _json_error(
+                "REQUIRED_FIELDS_MISSING",
+                "Cal informar correu, nom d'usuari i contrasenya",
+            ),
         )
 
     if not trimmed_email:
-        return None, None, None, None, _json_error(
-            "EMAIL_REQUIRED",
-            "El correu és obligatori",
+        return (
+            None,
+            None,
+            None,
+            None,
+            _json_error(
+                "EMAIL_REQUIRED",
+                "El correu és obligatori",
+            ),
         )
 
     if not trimmed_username:
-        return None, None, None, None, _json_error(
-            "USERNAME_REQUIRED",
-            "El nom d'usuari és obligatori",
+        return (
+            None,
+            None,
+            None,
+            None,
+            _json_error(
+                "USERNAME_REQUIRED",
+                "El nom d'usuari és obligatori",
+            ),
         )
 
     if not trimmed_password:
-        return None, None, None, None, _json_error(
-            "PASSWORD_REQUIRED",
-            "La contrasenya és obligatòria",
+        return (
+            None,
+            None,
+            None,
+            None,
+            _json_error(
+                "PASSWORD_REQUIRED",
+                "La contrasenya és obligatòria",
+            ),
         )
 
     if len(trimmed_email) > 128:
-        return None, None, None, None, _json_error(
-            "EMAIL_TOO_LONG",
-            "El correu és massa llarg",
+        return (
+            None,
+            None,
+            None,
+            None,
+            _json_error(
+                "EMAIL_TOO_LONG",
+                "El correu és massa llarg",
+            ),
         )
 
-    if (
-        contains_control_characters(trimmed_email)
-        or contains_escape_sequences(trimmed_email)
+    if contains_control_characters(trimmed_email) or contains_escape_sequences(
+        trimmed_email
     ):
-        return None, None, None, None, _json_error(
-            "EMAIL_INVALID_CHARACTERS",
-            "El correu conté caràcters no permesos",
+        return (
+            None,
+            None,
+            None,
+            None,
+            _json_error(
+                "EMAIL_INVALID_CHARACTERS",
+                "El correu conté caràcters no permesos",
+            ),
         )
 
     if any(ch.isspace() for ch in trimmed_email):
         if re.search(r"\s@", trimmed_email) or re.search(r"@\s", trimmed_email):
-            return None, None, None, None, _json_error(
-                "EMAIL_INVALID_SPACES",
-                "El correu no pot contenir espais interns",
+            return (
+                None,
+                None,
+                None,
+                None,
+                _json_error(
+                    "EMAIL_INVALID_SPACES",
+                    "El correu no pot contenir espais interns",
+                ),
             )
 
-        return None, None, None, None, _json_error(
-            "EMAIL_INVALID_FORMAT",
-            "El format del correu és invàlid",
+        return (
+            None,
+            None,
+            None,
+            None,
+            _json_error(
+                "EMAIL_INVALID_FORMAT",
+                "El format del correu és invàlid",
+            ),
         )
 
     if not _is_valid_email_format(trimmed_email):
-        return None, None, None, None, _json_error(
-            "EMAIL_INVALID_FORMAT",
-            "El format del correu és invàlid",
+        return (
+            None,
+            None,
+            None,
+            None,
+            _json_error(
+                "EMAIL_INVALID_FORMAT",
+                "El format del correu és invàlid",
+            ),
         )
 
     if len(trimmed_username) < 2:
-        return None, None, None, None, _json_error(
-            "USERNAME_TOO_SHORT",
-            "El nom d'usuari és massa curt",
+        return (
+            None,
+            None,
+            None,
+            None,
+            _json_error(
+                "USERNAME_TOO_SHORT",
+                "El nom d'usuari és massa curt",
+            ),
         )
 
     if len(trimmed_username) > 16:
-        return None, None, None, None, _json_error(
-            "USERNAME_TOO_LONG",
-            "El nom d'usuari és massa llarg",
+        return (
+            None,
+            None,
+            None,
+            None,
+            _json_error(
+                "USERNAME_TOO_LONG",
+                "El nom d'usuari és massa llarg",
+            ),
         )
 
-    if (
-        contains_control_characters(trimmed_username)
-        or contains_escape_sequences(trimmed_username)
+    if contains_control_characters(trimmed_username) or contains_escape_sequences(
+        trimmed_username
     ):
-        return None, None, None, None, _json_error(
-            "USERNAME_INVALID_CHARACTERS",
-            "El nom d'usuari conté caràcters no permesos",
+        return (
+            None,
+            None,
+            None,
+            None,
+            _json_error(
+                "USERNAME_INVALID_CHARACTERS",
+                "El nom d'usuari conté caràcters no permesos",
+            ),
         )
 
     if any(ch.isspace() for ch in trimmed_username):
-        return None, None, None, None, _json_error(
-            "USERNAME_INVALID_SPACES",
-            "El nom d'usuari no pot contenir espais interns",
+        return (
+            None,
+            None,
+            None,
+            None,
+            _json_error(
+                "USERNAME_INVALID_SPACES",
+                "El nom d'usuari no pot contenir espais interns",
+            ),
         )
 
     if not USERNAME_REGEX.fullmatch(trimmed_username):
-        return None, None, None, None, _json_error(
-            "USERNAME_INVALID_CHARACTERS",
-            "El nom d'usuari conté caràcters no permesos",
+        return (
+            None,
+            None,
+            None,
+            None,
+            _json_error(
+                "USERNAME_INVALID_CHARACTERS",
+                "El nom d'usuari conté caràcters no permesos",
+            ),
         )
 
     if len(trimmed_password) < 6:
-        return None, None, None, None, _json_error(
-            "PASSWORD_TOO_SHORT",
-            "La contrasenya és massa curta",
+        return (
+            None,
+            None,
+            None,
+            None,
+            _json_error(
+                "PASSWORD_TOO_SHORT",
+                "La contrasenya és massa curta",
+            ),
         )
 
     if len(trimmed_password) > 32:
-        return None, None, None, None, _json_error(
-            "PASSWORD_TOO_LONG",
-            "La contrasenya és massa llarga",
+        return (
+            None,
+            None,
+            None,
+            None,
+            _json_error(
+                "PASSWORD_TOO_LONG",
+                "La contrasenya és massa llarga",
+            ),
         )
 
-    if (
-        contains_control_characters(trimmed_password)
-        or contains_escape_sequences(trimmed_password)
+    if contains_control_characters(trimmed_password) or contains_escape_sequences(
+        trimmed_password
     ):
-        return None, None, None, None, _json_error(
-            "PASSWORD_INVALID_CHARACTERS",
-            "La contrasenya conté caràcters no permesos",
+        return (
+            None,
+            None,
+            None,
+            None,
+            _json_error(
+                "PASSWORD_INVALID_CHARACTERS",
+                "La contrasenya conté caràcters no permesos",
+            ),
         )
 
     if any(ch.isspace() for ch in trimmed_password):
-        return None, None, None, None, _json_error(
-            "PASSWORD_INVALID_SPACES",
-            "La contrasenya no pot contenir espais interns",
+        return (
+            None,
+            None,
+            None,
+            None,
+            _json_error(
+                "PASSWORD_INVALID_SPACES",
+                "La contrasenya no pot contenir espais interns",
+            ),
         )
 
     display_email = _normalize_email_for_storage(trimmed_email)
