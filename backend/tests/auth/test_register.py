@@ -110,8 +110,8 @@ def test_register_trims_leading_and_trailing_spaces(client, email, username, pas
 @pytest.mark.parametrize(
     "email, username, password, expected_code",
     [
-        ("user @example.com", "validuser", "Passw0rd", "EMAIL_INVALID_CHARACTERS"),
-        ("user@ example.com", "validuser", "Passw0rd", "EMAIL_INVALID_CHARACTERS"),
+        ("user @example.com", "validuser", "Passw0rd", "EMAIL_INVALID_SPACES"),
+        ("user@ example.com", "validuser", "Passw0rd", "EMAIL_INVALID_SPACES"),
         ("user@example.com", "valid user", "Passw0rd", "USERNAME_INVALID_SPACES"),
         ("user@example.com", "validuser", "Pass word", "PASSWORD_INVALID_SPACES"),
     ],
@@ -156,12 +156,12 @@ def test_register_rejects_email_with_invalid_format(client, invalid_email):
 @pytest.mark.parametrize(
     "email, username, password, expected_code",
     [
-        ("user @example.com", "validuser", "Passw0rd", "EMAIL_INVALID_CHARACTERS"),
-        ("user	@example.com", "validuser", "Passw0rd", "EMAIL_INVALID_CHARACTERS"),
-        ("user@example.com", "valid user", "Passw0rd", "USERNAME_INVALID_CHARACTERS"),
-        ("user@example.com", "valid	user", "Passw0rd", "USERNAME_INVALID_CHARACTERS"),
-        ("user@example.com", "passuser", "pass word", "PASSWORD_INVALID_CHARACTERS"),
-        ("user@example.com", "passuser", "pass	word", "PASSWORD_INVALID_CHARACTERS"),
+        ("user\n@example.com", "validuser", "Passw0rd", "EMAIL_INVALID_CHARACTERS"),
+        ("user\t@example.com", "validuser", "Passw0rd", "EMAIL_INVALID_CHARACTERS"),
+        ("user@example.com", "valid\nuser", "Passw0rd", "USERNAME_INVALID_CHARACTERS"),
+        ("user@example.com", "valid\tuser", "Passw0rd", "USERNAME_INVALID_CHARACTERS"),
+        ("user@example.com", "passuser", "pass\nword", "PASSWORD_INVALID_CHARACTERS"),
+        ("user@example.com", "passuser", "pass\tword", "PASSWORD_INVALID_CHARACTERS"),
     ],
 )
 def test_register_rejects_control_characters(

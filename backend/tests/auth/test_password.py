@@ -171,10 +171,10 @@ def test_change_password_rejects_internal_spaces(
 @pytest.mark.parametrize(
     "current_password, new_password, expected_code",
     [
-        ("Pass word", "NewPass1", "CURRENT_PASSWORD_INVALID_CHARACTERS"),
-        ("Passw0rd", "New Pass1", "NEW_PASSWORD_INVALID_CHARACTERS"),
-        ("Pass	word", "NewPass1", "CURRENT_PASSWORD_INVALID_CHARACTERS"),
-        ("Passw0rd", "New Pass1", "NEW_PASSWORD_INVALID_CHARACTERS"),
+        ("Pass\nword", "NewPass1", "CURRENT_PASSWORD_INVALID_CHARACTERS"),
+        ("Passw0rd", "New\nPass1", "NEW_PASSWORD_INVALID_CHARACTERS"),
+        ("Pass\tword", "NewPass1", "CURRENT_PASSWORD_INVALID_CHARACTERS"),
+        ("Passw0rd", "New\tPass1", "NEW_PASSWORD_INVALID_CHARACTERS"),
     ],
     ids=[
         "current_password_newline",
