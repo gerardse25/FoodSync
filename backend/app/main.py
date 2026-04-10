@@ -1,4 +1,5 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Request, HTTPException
+from fastapi.responses import JSONResponse
 
 import app.models
 import app.home_models
@@ -13,6 +14,26 @@ Base.metadata.create_all(bind=engine)
 app.include_router(router)
 app.include_router(home_router)
 
+# ==================== EXCEPTION HANDLERS ====================
+
+@app.exception_handler(HTTPException)
+async def custom_http_exception_handler(request: Request, exc: HTTPException):
+    # Si ja té format correcte amb code → respectar-lo
+    if isinstance(exc.detail, dict) and "code" in exc.detail:
+        return JSONResponse(
+            status_code=exc.status_code,
+            content=exc.detail,
+        )
+
+    # Errors d'autenticació
+    if exc.status_code in (401, 403):
+        return JSONResponse(
+            status_code=exc.status_code,
+            content={
+                "detail": exc.detail,
+                "code": "AUTH_REQUIRED",
+            },
+        )
 
 @app.get("/")
 def root():

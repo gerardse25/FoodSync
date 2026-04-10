@@ -25,6 +25,7 @@ from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
+from fastapi.responses import JSONResponse
 
 import app.auth
 import app.models
@@ -167,41 +168,77 @@ def create_home(
     current=Depends(app.auth.get_current_user),
     db: Session = Depends(get_db),
 ):
-    """
-    Crea una nova llar.
-    Restricció: un usuari no pot crear una llar si ja pertany a una altra.
-    El creador és automàticament el propietari amb rol 'owner'.
-    """
     user, _session = current
 
-    # Verificar que l'usuari no pertany ja a una llar
-    existing = _get_active_membership(user.id, db)
-    if existing:
-        raise HTTPException(
-            status_code=409,
-            detail="Ja pertanys a una llar. Surt-ne primer per crear-ne una de nova",
+    # ==================== REQUIRED ====================
+    if data.name is None:
+        return JSONResponse(
+            status_code=422,
+            content={
+                "detail": "El nom és obligatori.",
+                "code": "REQUIRED_FIELDS_MISSING",
+            },
+        )
+    
+    # Trim inicial
+    name = data.name.strip()
+
+    # ==================== LENGTH ====================
+    if len(name) < 2 or len(name) > 20:
+        return JSONResponse(
+            status_code=422,
+            content={
+                "detail": "El nom ha de tenir entre 2 i 20 caràcters.",
+                "code": "HOME_NAME_INVALID_LENGTH",
+            },
         )
 
-    # Crear la llar amb codi d'invitació únic
+    # ==================== SPACES DOBLES ====================
+    if "  " in name:
+        return JSONResponse(
+            status_code=400,
+            content={
+                "detail": "El nom no pot contenir espais consecutius.",
+                "code": "HOME_NAME_INVALID_SPACES",
+            },
+        )
+
+    # ==================== CARÀCTERS ====================
+    if not all(c.isalnum() or c == " " for c in name):
+        return JSONResponse(
+            status_code=400,
+            content={
+                "detail": "El nom conté caràcters no vàlids.",
+                "code": "HOME_NAME_INVALID_CHARACTERS",
+            },
+        )
+
+    # ==================== USER ALREADY HAS HOME ====================
+    existing = _get_active_membership(user.id, db)
+    if existing:
+        return JSONResponse(
+            status_code=409,
+            content={
+                "detail": "Ja pertanys a una llar.",
+                "code": "USER_ALREADY_HAS_HOME",
+            },
+        )
+
+    # ==================== CREACIÓ ====================
     invite_code = _generate_invite_code()
-    # Garantir unicitat del codi (reintents en cas de col·lisió)
     attempts = 0
-    while (
-        db.query(Home).filter(Home.invite_code == invite_code, Home.is_active).first()
-        and attempts < 5
-    ):
+    while db.query(Home).filter(Home.invite_code == invite_code, Home.is_active).first() and attempts < 5:
         invite_code = _generate_invite_code()
         attempts += 1
 
     home = Home(
-        name=data.name,
+        name=name,
         owner_id=user.id,
         invite_code=invite_code,
     )
     db.add(home)
-    db.flush()  # obtenir home.id sense commit
+    db.flush()
 
-    # Crear la membresia del propietari
     membership = HomeMembership(
         home_id=home.id,
         user_id=user.id,
@@ -213,10 +250,14 @@ def create_home(
 
     members = _get_members_with_users(home.id, db)
 
-    return {
-        "message": "Llar creada correctament",
-        "home": _build_home_response(home, members, user.id, include_members=True),
-    }
+    return JSONResponse(
+        status_code=201,
+        content={
+            "message": "Llar creada correctament",
+            "code": "HOME_CREATED",
+            "home": _build_home_response(home, members, user.id, include_members=True).model_dump(),
+        },
+    )
 
 
 @router.post("/join", status_code=status.HTTP_200_OK)
@@ -225,48 +266,102 @@ def join_home(
     current=Depends(app.auth.get_current_user),
     db: Session = Depends(get_db),
 ):
-    """
-    Unir-se a una llar via codi d'invitació.
-    Restriccions:
-      - L'usuari no pot pertànyer a cap altra llar.
-      - La llar no pot superar HOME_MAX_MEMBERS membres.
-      - No es pot re-unir a una llar de la qual ja formes part.
-    """
     user, _session = current
 
-    # Verificar que l'usuari no pertany ja a una llar
-    existing = _get_active_membership(user.id, db)
-    if existing:
-        raise HTTPException(
-            status_code=409,
-            detail="Ja pertanys a una llar. Surt-ne primer per unir-te a una altra",
+    invite_code = data.invite_code.strip() if data.invite_code else ""
+
+    # ==================== VALIDACIÓ CODI ====================
+    if not invite_code:
+        return JSONResponse(
+            status_code=422,
+            content={
+                "detail": "El codi d'invitació és obligatori.",
+                "code": "INVITE_CODE_REQUIRED",
+            },
         )
 
-    # Buscar la llar pel codi d'invitació
+    if any(ord(c) < 32 or ord(c) > 126 for c in invite_code):
+        return JSONResponse(
+            status_code=400,
+            content={
+                "detail": "El codi d'invitació conté caràcters no vàlids.",
+                "code": "INVITE_CODE_INVALID_FORMAT",
+            },
+        )
+
+    # ==================== BUSCAR LLAR ====================
     home = (
         db.query(Home)
         .filter(
-            Home.invite_code == data.invite_code,
+            Home.invite_code == invite_code,
             Home.is_active,
         )
         .first()
     )
 
     if not home:
-        raise HTTPException(
+        return JSONResponse(
             status_code=404,
-            detail="Codi d'invitació invàlid o caducat",
+            content={
+                "detail": "Codi d'invitació invàlid o caducat",
+                "code": "INVITE_CODE_INVALID_OR_EXPIRED",
+            },
         )
 
-    # Verificar límit de membres (amb lock per evitar race conditions)
+    # ==================== VALIDACIONS USUARI ====================
+
+    # Ja és membre d'aquesta llar
+    existing_in_home = (
+        db.query(HomeMembership)
+        .filter(
+            HomeMembership.user_id == user.id,
+            HomeMembership.home_id == home.id,
+        )
+        .first()
+    )
+
+    if existing_in_home:
+        return JSONResponse(
+            status_code=409,
+            content={
+                "detail": "Ja formes part d'aquesta llar.",
+                "code": "USER_ALREADY_IN_HOME",
+            },
+        )
+
+    # Ja pertany a una altra llar
+    existing = _get_active_membership(user.id, db)
+    if existing:
+        return JSONResponse(
+            status_code=409,
+            content={
+                "detail": "Ja pertanys a una llar.",
+                "code": "USER_ALREADY_HAS_HOME",
+            },
+        )
+
+    # No pot unir-se a la seva pròpia llar
+    if home.owner_id == user.id:
+        return JSONResponse(
+            status_code=409,
+            content={
+                "detail": "No pots unir-te a la teva pròpia llar.",
+                "code": "CANNOT_JOIN_OWN_HOME",
+            },
+        )
+
+    # ==================== LÍMIT MEMBRES ====================
     current_count = _count_active_members(home.id, db)
     if current_count >= HOME_MAX_MEMBERS:
-        raise HTTPException(
+        return JSONResponse(
             status_code=409,
-            detail=f"La llar ha assolit el límit màxim de {HOME_MAX_MEMBERS} membres",
+            content={
+                "detail": f"La llar ha assolit el límit màxim de {HOME_MAX_MEMBERS} membres",
+                "code": "HOME_MEMBER_LIMIT_REACHED",
+            },
         )
 
-    # Crear la membresia
+    # ==================== CREAR MEMBRESIA ====================
     membership = HomeMembership(
         home_id=home.id,
         user_id=user.id,
@@ -274,7 +369,6 @@ def join_home(
     )
     db.add(membership)
 
-    # Actualitzar updated_at per propagar el canvi als clients
     home.updated_at = datetime.utcnow()
     db.commit()
     db.refresh(home)
@@ -283,6 +377,7 @@ def join_home(
 
     return {
         "message": "T'has unit a la llar correctament",
+        "code": "HOME_JOINED",
         "home": _build_home_response(home, members, user.id, include_members=True),
     }
 
@@ -292,31 +387,34 @@ def get_home(
     current=Depends(app.auth.get_current_user),
     db: Session = Depends(get_db),
 ):
-    """
-    Retorna la informació de la llar a la qual pertany l'usuari.
-    Inclou la llista de membres.
-    El codi d'invitació només s'exposa al propietari.
-    """
     user, _session = current
 
     membership = _get_active_membership(user.id, db)
     if not membership:
-        raise HTTPException(
+        return JSONResponse(
             status_code=404,
-            detail="No pertanys a cap llar",
+            content={"detail": "No pertanys a cap llar", "code": "NOT_IN_HOME"}
         )
 
     home = _get_active_home(membership.home_id, db)
     if not home:
-        raise HTTPException(
+        return JSONResponse(
             status_code=404,
-            detail="La llar no existeix o ha estat dissolta",
+            content={"detail": "La llar no existeix o ha estat dissolta", "code": "HOME_NOT_FOUND"}
         )
 
     members = _get_members_with_users(home.id, db)
 
-    return _build_home_response(home, members, user.id, include_members=True)
-
+    # Construïm la resposta
+    response_obj = _build_home_response(home, members, user.id, include_members=True)
+    
+    # IMPORTANT: Convertim a dict abans de posar-ho al JSONResponse 
+    # per evitar que Pydantic intenti fer lazy-loading de dades de la BD fora de la sessió.
+    import fastapi.encoders
+    data = fastapi.encoders.jsonable_encoder(response_obj)
+    data["code"] = "HOME_RETRIEVED"
+    
+    return JSONResponse(status_code=200, content=data)
 
 @router.get("/invite-code", status_code=status.HTTP_200_OK)
 def get_invite_code(
@@ -331,19 +429,20 @@ def get_invite_code(
 
     membership = _get_active_membership(user.id, db)
     if not membership or membership.role != "owner":
-        raise HTTPException(
-            status_code=403,
-            detail="Només el propietari pot veure el codi d'invitació",
-        )
+        return JSONResponse(status_code=403, content={
+            "detail": "Només el propietari pot veure el codi d'invitació",
+            "code": "OWNER_PERMISSION_REQUIRED",
+        })
 
     home = _get_active_home(membership.home_id, db)
     if not home:
-        raise HTTPException(status_code=404, detail="La llar no existeix")
+        return JSONResponse(status_code=404, content={"detail": "La llar no existeix", "code": "HOME_NOT_FOUND"})
 
-    return {
+    return JSONResponse(status_code=200, content={
+        "code": "INVITE_CODE_RETRIEVED",
         "invite_code": home.invite_code,
         "home_id": str(home.id),
-    }
+    })
 
 
 @router.post("/invite-code/regenerate", status_code=status.HTTP_200_OK)
@@ -360,10 +459,10 @@ def regenerate_invite_code(
 
     membership = _get_active_membership(user.id, db)
     if not membership or membership.role != "owner":
-        raise HTTPException(
-            status_code=403,
-            detail="Només el propietari pot regenerar el codi d'invitació",
-        )
+        return JSONResponse(status_code=403, content={
+            "detail": "Només el propietari pot regenerar el codi d'invitació",
+            "code": "OWNER_PERMISSION_REQUIRED",
+        })
 
     home = _get_active_home(membership.home_id, db)
     if not home:
@@ -383,56 +482,121 @@ def regenerate_invite_code(
     home.updated_at = datetime.utcnow()
     db.commit()
 
-    return {
+    return JSONResponse(status_code=200, content={
+        "code": "INVITE_CODE_REGENERATED",
         "message": "Codi d'invitació regenerat correctament",
         "invite_code": home.invite_code,
-    }
-
+    })
 
 @router.delete("/leave", status_code=status.HTTP_200_OK)
 def leave_home(
     current=Depends(app.auth.get_current_user),
     db: Session = Depends(get_db),
 ):
-    """
-    Sortir de la llar.
-
-    Comportament:
-      - Membre normal: desactiva la seva membresia.
-      - Propietari: dissol la llar i expulsa tots els membres.
-        (El propietari ha de transferir la propietat o dissoldra la llar.)
-
-    Decisió de disseny: no transferim propietat automàticament per evitar
-    assignacions no consentides. El propietari és responsable de la llar.
-    """
     user, _session = current
 
     membership = _get_active_membership(user.id, db)
     if not membership:
-        raise HTTPException(
+        return JSONResponse(
             status_code=404,
-            detail="No pertanys a cap llar",
+            content={"detail": "No pertanys a cap llar", "code": "NOT_IN_HOME"},
         )
 
     home = _get_active_home(membership.home_id, db)
     if not home:
-        raise HTTPException(status_code=404, detail="La llar no existeix")
+        return JSONResponse(
+            status_code=404,
+            content={"detail": "La llar no existeix", "code": "NOT_IN_HOME"},
+        )
 
     now = datetime.utcnow()
 
-    if membership.role == "owner":
-        # Dissoldre la llar
-        _dissolve_home(home, db)
-        db.commit()
-        return {"message": "Has sortit de la llar i aquesta ha estat dissolta"}
+    other_memberships = (
+        db.query(HomeMembership)
+        .filter(
+            HomeMembership.home_id == home.id,
+            HomeMembership.is_active,
+            HomeMembership.user_id != user.id,
+        )
+        .order_by(HomeMembership.joined_at.asc())
+        .all()
+    )
 
-    # Membre normal: soft-delete de la membresia
+   # ==================== Propietari ====================
+    if membership.role == "owner":
+        if other_memberships:
+            # 1. Triem el nou propietari (el més antic)
+            new_owner_membership = other_memberships[0]
+            
+            # 2. Busquem l'usuari per obtenir el seu nom ABANS del commit
+            # Utilitzem app.models.User tal com el tens a l'import
+            new_owner_user = (
+                db.query(app.models.User)
+                .filter(app.models.User.id == new_owner_membership.user_id)
+                .first()
+            )
+            
+            # Guardem el nom en una variable de text (string)
+            new_owner_name = new_owner_user.username if new_owner_user else "usuari"
+
+            # 3. Fem els canvis de lògica
+            membership.is_active = False
+            membership.left_at = now
+            
+            new_owner_membership.role = "owner"
+            home.owner_id = new_owner_membership.user_id
+            home.updated_at = now
+
+            db.commit()
+            
+            # No cal db.expire_all() aquí, el TestClient ho agrairà
+            return JSONResponse(
+                status_code=200,
+                content={
+                    "message": f"Has sortit de la llar. La propietat ha estat transferida a {new_owner_name}",
+                    "code": "HOME_LEFT_OWNER_TRANSFERRED",
+                },
+            )
+        else:
+            # Cas llar privada (sol)
+            membership.is_active = False
+            membership.left_at = now
+            home.is_active = False
+            home.updated_at = now
+            
+            db.commit()
+            
+            return JSONResponse(
+                status_code=200,
+                content={
+                    "message": "Has sortit de la llar i aquesta ha estat dissolta",
+                    "code": "HOME_LEFT_AND_DISSOLVED",
+                },
+            )
+
+    # ==================== Membre normal ====================
     membership.is_active = False
     membership.left_at = now
     home.updated_at = now
     db.commit()
+    db.expire_all()  # ← neteja la sessió
 
-    return {"message": "Has sortit de la llar correctament"}
+    if other_memberships:
+        return JSONResponse(
+            status_code=200,
+            content={
+                "message": "Has sortit de la llar correctament",
+                "code": "HOME_LEFT",
+            },
+        )
+
+    return JSONResponse(
+        status_code=200,
+        content={
+            "message": "Has sortit de la llar correctament",
+            "code": "HOME_LEFT",
+        },
+    )
 
 
 @router.delete("/kick", status_code=status.HTTP_200_OK)
@@ -453,21 +617,24 @@ def kick_member(
     # Verificar que l'usuari és propietari
     owner_membership = _get_active_membership(user.id, db)
     if not owner_membership or owner_membership.role != "owner":
-        raise HTTPException(
-            status_code=403,
-            detail="Només el propietari pot expulsar membres",
-        )
+        return JSONResponse(status_code=403, content={
+            "detail": "Només el propietari pot expulsar membres",
+            "code": "OWNER_PERMISSION_REQUIRED",
+        })
 
     # No es pot expulsar a si mateix
     if str(data.user_id) == str(user.id):
-        raise HTTPException(
-            status_code=400,
-            detail="No pots expulsar-te a tu mateix. Utilitza l'endpoint de sortir",
-        )
+        return JSONResponse(status_code=400, content={
+            "detail": "No pots expulsar-te a tu mateix",
+            "code": "CANNOT_KICK_SELF",
+        })
 
     home = _get_active_home(owner_membership.home_id, db)
     if not home:
-        raise HTTPException(status_code=404, detail="La llar no existeix")
+        return JSONResponse(status_code=404, content={
+            "detail": "La llar no existeix", 
+            "code": "HOME_NOT_FOUND"
+            })
 
     # Buscar la membresia del membre a expulsar
     target_membership = (
@@ -481,10 +648,10 @@ def kick_member(
     )
 
     if not target_membership:
-        raise HTTPException(
-            status_code=404,
-            detail="L'usuari no pertany a aquesta llar",
-        )
+        return JSONResponse(status_code=404, content={
+            "detail": "L'usuari no pertany a aquesta llar",
+            "code": "TARGET_USER_NOT_IN_HOME",
+        })
 
     now = datetime.utcnow()
     target_membership.is_active = False
@@ -500,44 +667,56 @@ def kick_member(
     )
     kicked_username = kicked_user.username if kicked_user else str(data.user_id)
 
-    return {"message": f"L'usuari '{kicked_username}' ha estat expulsat de la llar"}
-
+    return JSONResponse(status_code=200, content={
+        "code": "MEMBER_KICKED",
+        "message": f"L'usuari '{kicked_username}' ha estat expulsat de la llar",
+    })
 
 @router.get("/sync", status_code=status.HTTP_200_OK)
 def sync_home(
     current=Depends(app.auth.get_current_user),
     db: Session = Depends(get_db),
 ):
-    """
-    Endpoint de sincronització lleuger.
-    Retorna l'updated_at de la llar perquè els clients puguin detectar
-    canvis sense descarregar tota la informació (poll-based sync).
-
-    El client compara el seu updated_at local amb el retornat:
-      - Si és diferent → cridar GET /home/ per actualitzar l'estat complet.
-      - Si és igual → no cal fer res.
-    """
     user, _session = current
 
     membership = _get_active_membership(user.id, db)
+    
+    # Si no hi ha membresia, vol dir que l'usuari ja no és a la llar
     if not membership:
-        raise HTTPException(
+        return JSONResponse(
             status_code=404,
-            detail="No pertanys a cap llar",
+            content={
+                "home_active": False,
+                "detail": "No pertanys a cap llar",
+                "code": "NOT_IN_HOME"
+            }
         )
 
     home = _get_active_home(membership.home_id, db)
     if not home:
-        # La llar ha estat dissolta (el propietari ha sortit)
-        return {
-            "home_active": False,
-            "updated_at": None,
-            "message": "La llar ha estat dissolta",
-        }
+        return JSONResponse(
+            status_code=200,
+            content={
+                "home_active": False,
+                "updated_at": None,
+                "message": "La llar ha estat dissolta",
+                "code": "HOME_DISSOLVED",
+            },
+        )
 
-    return {
-        "home_active": True,
-        "home_id": str(home.id),
-        "updated_at": home.updated_at.isoformat(),
-        "member_count": _count_active_members(home.id, db),
-    }
+    member_count = (
+        db.query(HomeMembership)
+        .filter(HomeMembership.home_id == home.id, HomeMembership.is_active == True)
+        .count() # .count() és més eficient que len(.all())
+    )
+
+    return JSONResponse(
+        status_code=200,
+        content={
+            "home_active": True,
+            "home_id": str(home.id),
+            "updated_at": home.updated_at.isoformat() if home.updated_at else None,
+            "member_count": member_count,
+            "code": "HOME_SYNC_OK",
+        },
+    )

@@ -9,15 +9,15 @@ from pydantic import BaseModel, field_validator
 class CreateHomeSchema(BaseModel):
     """Dades per crear una nova llar."""
 
-    name: str
+    name: Optional[str] = None
 
-    @field_validator("name")
-    @classmethod
-    def validate_name(cls, value: str) -> str:
-        value = value.strip()
-        if len(value) < 2 or len(value) > 64:
-            raise ValueError("El nom de la llar ha de tenir entre 2 i 64 caràcters")
-        return value
+    # @field_validator("name")
+    # @classmethod
+    # def validate_name(cls, value: str) -> str:
+    #     value = value.strip()
+    #     if len(value) < 2 or len(value) > 64:
+    #         raise ValueError("El nom de la llar ha de tenir entre 2 i 64 caràcters")
+    #     return value
 
 
 class JoinHomeSchema(BaseModel):
@@ -25,13 +25,13 @@ class JoinHomeSchema(BaseModel):
 
     invite_code: str
 
-    @field_validator("invite_code")
-    @classmethod
-    def validate_invite_code(cls, value: str) -> str:
-        value = value.strip().upper()
-        if not value:
-            raise ValueError("El codi d'invitació no pot estar buit")
-        return value
+    # @field_validator("invite_code")
+    # @classmethod
+    # def validate_invite_code(cls, value: str) -> str:
+    #     value = value.strip().upper()
+    #     if not value:
+    #         raise ValueError("El codi d'invitació no pot estar buit")
+    #     return value
 
 
 class KickMemberSchema(BaseModel):
