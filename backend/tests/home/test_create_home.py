@@ -35,7 +35,7 @@ def test_create_home_with_valid_data_succeeds(client, owner_user, name):
         ("", "HOME_NAME_INVALID_LENGTH"),
         (" ", "HOME_NAME_INVALID_LENGTH"),
         ("A", "HOME_NAME_INVALID_LENGTH"),
-        ("A" * 65, "HOME_NAME_INVALID_LENGTH"),
+        ("A" * 21, "HOME_NAME_INVALID_LENGTH"),
     ],
     ids=["empty", "spaces_only", "too_short", "too_long"],
 )
