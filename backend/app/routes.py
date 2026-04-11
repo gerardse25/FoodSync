@@ -877,9 +877,7 @@ def delete_account(
 
     if membership:
         home = (
-            db.query(Home)
-            .filter(Home.id == membership.home_id, Home.is_active)
-            .first()
+            db.query(Home).filter(Home.id == membership.home_id, Home.is_active).first()
         )
 
         if membership.role == "owner":
@@ -940,7 +938,7 @@ def delete_account(
     return JSONResponse(
         status_code=200,
         content={
-            "message": "El teu compte s'ha desactivat correctament", 
-            "code": result_code
+            "message": "El teu compte s'ha desactivat correctament",
+            "code": result_code,
         },
     )

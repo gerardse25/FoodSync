@@ -16,6 +16,7 @@ app.include_router(home_router)
 
 # ==================== EXCEPTION HANDLERS ====================
 
+
 @app.exception_handler(HTTPException)
 async def custom_http_exception_handler(request: Request, exc: HTTPException):
     # Si ja té format correcte amb code → respectar-lo
@@ -34,6 +35,7 @@ async def custom_http_exception_handler(request: Request, exc: HTTPException):
                 "code": "AUTH_REQUIRED",
             },
         )
+
 
 @app.get("/")
 def root():

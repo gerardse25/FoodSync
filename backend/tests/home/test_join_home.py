@@ -15,7 +15,9 @@ def test_join_home_with_valid_code_succeeds(client, owner_home, member1_user):
     assert body["code"] == "HOME_JOINED"
     assert body["home"]["id"] == owner_home["home_id"]
     assert body["home"]["member_count"] == 2
-    joined_members = {member["username"]: member["role"] for member in body["home"]["members"]}
+    joined_members = {
+        member["username"]: member["role"] for member in body["home"]["members"]
+    }
     assert joined_members[member1_user["user"]["username"]] == "member"
 
 
@@ -43,7 +45,9 @@ def test_join_home_trims_invite_code(client, owner_home, member2_user):
     ],
     ids=["empty", "spaces_only", "invalid_code", "control_character"],
 )
-def test_join_home_rejects_invalid_code(client, member1_user, invite_code, expected_status, expected_code):
+def test_join_home_rejects_invalid_code(
+    client, member1_user, invite_code, expected_status, expected_code
+):
     response = client.post(
         "/home/join",
         json={"invite_code": invite_code},
@@ -77,11 +81,17 @@ def test_join_home_fails_if_user_is_already_in_same_home(client, owner_home):
 
     assert response.status_code == 409, response.text
     body = response.json()
-    assert body["code"] in {"USER_ALREADY_HAS_HOME", "USER_ALREADY_IN_HOME", "CANNOT_JOIN_OWN_HOME"}
+    assert body["code"] in {
+        "USER_ALREADY_HAS_HOME",
+        "USER_ALREADY_IN_HOME",
+        "CANNOT_JOIN_OWN_HOME",
+    }
 
 
 @pytest.mark.parametrize("user_fixture", ["private_home_setup"])
-def test_join_home_fails_if_user_already_belongs_to_another_home(client, owner_home, request, user_fixture):
+def test_join_home_fails_if_user_already_belongs_to_another_home(
+    client, owner_home, request, user_fixture
+):
     user_ctx = request.getfixturevalue(user_fixture)
     response = client.post(
         "/home/join",
@@ -94,7 +104,9 @@ def test_join_home_fails_if_user_already_belongs_to_another_home(client, owner_h
     assert body["code"] == "USER_ALREADY_HAS_HOME"
 
 
-def test_join_home_rejects_when_capacity_reached(client, home_capacity_setup, make_user):
+def test_join_home_rejects_when_capacity_reached(
+    client, home_capacity_setup, make_user
+):
     extra_user = make_user(username="extra10", email="extra10@example.com")
     response = client.post(
         "/home/join",
@@ -120,7 +132,9 @@ def test_join_home_rejects_non_existing_home_code(client, member1_user, invite_c
     assert body["code"] == "INVITE_CODE_INVALID_OR_EXPIRED"
 
 
-def test_user_can_join_new_home_after_leaving_previous_one(client, private_home_setup, owner_home):
+def test_user_can_join_new_home_after_leaving_previous_one(
+    client, private_home_setup, owner_home
+):
     leave_response = client.delete("/home/leave", headers=private_home_setup["headers"])
     join_response = client.post(
         "/home/join",
@@ -167,7 +181,9 @@ def test_join_home_handles_repository_failure(unsafe_client):
     def override_get_db():
         yield BrokenDB()
 
-    unsafe_client.app.dependency_overrides[auth.get_current_user] = override_current_user
+    unsafe_client.app.dependency_overrides[auth.get_current_user] = (
+        override_current_user
+    )
     unsafe_client.app.dependency_overrides[home_routes.get_db] = override_get_db
 
     response = unsafe_client.post(

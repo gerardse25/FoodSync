@@ -16,8 +16,8 @@ from app.database import Base
 
 # ── Constants ────────────────────────────────────────────────────────────────
 
-HOME_MAX_MEMBERS = 10          # màxim de membres per llar (propietari inclòs)
-INVITE_CODE_LENGTH = 8         # longitud del codi d'invitació (caràcters URL-safe)
+HOME_MAX_MEMBERS = 10  # màxim de membres per llar (propietari inclòs)
+INVITE_CODE_LENGTH = 8  # longitud del codi d'invitació (caràcters URL-safe)
 
 
 def _generate_invite_code() -> str:
@@ -26,6 +26,7 @@ def _generate_invite_code() -> str:
 
 
 # ── Models ────────────────────────────────────────────────────────────────────
+
 
 class Home(Base):
     """
@@ -37,6 +38,7 @@ class Home(Base):
       - invite_code és únic i es pot regenerar.
       - Soft-delete via is_active (coherent amb User).
     """
+
     __tablename__ = "homes"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
@@ -68,6 +70,7 @@ class HomeMembership(Base):
       - role: 'owner' | 'member'
       - Soft-delete via is_active.
     """
+
     __tablename__ = "home_memberships"
 
     __table_args__ = (

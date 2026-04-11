@@ -16,7 +16,9 @@ def test_member_leaves_home(client, shared_home_member_setup, shared_home_setup)
     assert shared_home_member_setup["user"]["user"]["username"] not in usernames
 
 
-def test_owner_leaving_shared_home_transfers_ownership_to_oldest_member(client, shared_home_owner_setup):
+def test_owner_leaving_shared_home_transfers_ownership_to_oldest_member(
+    client, shared_home_owner_setup
+):
     response = client.delete("/home/leave", headers=shared_home_owner_setup["headers"])
 
     assert response.status_code == 200, response.text
@@ -24,8 +26,12 @@ def test_owner_leaving_shared_home_transfers_ownership_to_oldest_member(client, 
     assert body["code"] == "HOME_LEFT_OWNER_TRANSFERRED"
 
     owner_get = client.get("/home/", headers=shared_home_owner_setup["headers"])
-    oldest_get = client.get("/home/", headers=shared_home_owner_setup["oldest_member_ctx"]["headers"])
-    newest_get = client.get("/home/", headers=shared_home_owner_setup["newer_member_ctx"]["headers"])
+    oldest_get = client.get(
+        "/home/", headers=shared_home_owner_setup["oldest_member_ctx"]["headers"]
+    )
+    newest_get = client.get(
+        "/home/", headers=shared_home_owner_setup["newer_member_ctx"]["headers"]
+    )
 
     assert owner_get.status_code == 404, owner_get.text
     assert oldest_get.status_code == 200, oldest_get.text
@@ -66,7 +72,11 @@ def test_non_member_cannot_leave_home(client, outsider_user):
 
 @pytest.mark.parametrize("who", ["owner", "member"])
 def test_leave_non_existing_home_returns_error(client, shared_home_setup, who):
-    headers = shared_home_setup["owner_headers"] if who == "owner" else shared_home_setup["member1_headers"]
+    headers = (
+        shared_home_setup["owner_headers"]
+        if who == "owner"
+        else shared_home_setup["member1_headers"]
+    )
 
     first_leave = client.delete("/home/leave", headers=headers)
     second_leave = client.delete("/home/leave", headers=headers)
@@ -78,7 +88,9 @@ def test_leave_non_existing_home_returns_error(client, shared_home_setup, who):
 
 
 def test_sync_reflects_member_count_after_member_leaves(client, shared_home_setup):
-    leave_response = client.delete("/home/leave", headers=shared_home_setup["member1_headers"])
+    leave_response = client.delete(
+        "/home/leave", headers=shared_home_setup["member1_headers"]
+    )
     sync_response = client.get("/home/sync", headers=shared_home_setup["owner_headers"])
 
     assert leave_response.status_code == 200, leave_response.text
@@ -94,7 +106,9 @@ def test_leave_home_handles_repository_failure(unsafe_client, role):
     auth = unsafe_client.app_modules["auth"]
 
     fake_user = types.SimpleNamespace(id="fake-user-id")
-    fake_membership = types.SimpleNamespace(role=role, home_id="fake-home-id", is_active=True)
+    fake_membership = types.SimpleNamespace(
+        role=role, home_id="fake-home-id", is_active=True
+    )
     fake_home = types.SimpleNamespace(id="fake-home-id", is_active=True)
 
     def override_current_user():
@@ -136,9 +150,13 @@ def test_leave_home_handles_repository_failure(unsafe_client, role):
     def override_get_db():
         yield BrokenDB()
 
-    unsafe_client.app.dependency_overrides[auth.get_current_user] = override_current_user
+    unsafe_client.app.dependency_overrides[auth.get_current_user] = (
+        override_current_user
+    )
     unsafe_client.app.dependency_overrides[home_routes.get_db] = override_get_db
 
-    response = unsafe_client.delete("/home/leave", headers={"Authorization": "Bearer anything"})
+    response = unsafe_client.delete(
+        "/home/leave", headers={"Authorization": "Bearer anything"}
+    )
 
     assert response.status_code == 500

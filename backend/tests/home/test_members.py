@@ -108,7 +108,9 @@ def test_list_members_handles_repository_failure(unsafe_client):
     def override_get_db():
         yield BrokenDB()
 
-    unsafe_client.app.dependency_overrides[auth.get_current_user] = override_current_user
+    unsafe_client.app.dependency_overrides[auth.get_current_user] = (
+        override_current_user
+    )
     unsafe_client.app.dependency_overrides[home_routes.get_db] = override_get_db
 
     response = unsafe_client.get("/home/", headers={"Authorization": "Bearer anything"})

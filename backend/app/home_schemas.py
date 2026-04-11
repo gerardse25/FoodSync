@@ -5,6 +5,7 @@ from pydantic import BaseModel
 
 # ── Request schemas ───────────────────────────────────────────────────────────
 
+
 class CreateHomeSchema(BaseModel):
     """Dades per crear una nova llar."""
 
@@ -41,6 +42,7 @@ class KickMemberSchema(BaseModel):
 
 # ── Response schemas ──────────────────────────────────────────────────────────
 
+
 class MemberResponse(BaseModel):
     """Informació pública d'un membre de la llar."""
 
@@ -56,7 +58,7 @@ class HomeResponse(BaseModel):
     id: str
     name: str
     owner_id: str
-    invite_code: Optional[str]   # None si l'usuari no és propietari
+    invite_code: Optional[str]  # None si l'usuari no és propietari
     member_count: int
     created_at: str
 

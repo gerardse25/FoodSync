@@ -38,7 +38,9 @@ def test_create_home_with_valid_data_succeeds(client, owner_user, name):
     ],
     ids=["empty", "spaces_only", "too_short", "too_long"],
 )
-def test_create_home_rejects_invalid_name_length(client, owner_user, name, expected_code):
+def test_create_home_rejects_invalid_name_length(
+    client, owner_user, name, expected_code
+):
     response = client.post("/home/", json={"name": name}, headers=owner_user["headers"])
 
     assert response.status_code == 422, response.text
@@ -56,7 +58,9 @@ def test_create_home_rejects_invalid_name_length(client, owner_user, name, expec
         ("My  Home", "HOME_NAME_INVALID_SPACES"),
     ],
 )
-def test_create_home_rejects_invalid_name_characters_and_spaces(client, owner_user, name, expected_code):
+def test_create_home_rejects_invalid_name_characters_and_spaces(
+    client, owner_user, name, expected_code
+):
     response = client.post("/home/", json={"name": name}, headers=owner_user["headers"])
 
     assert response.status_code in (400, 422), response.text
@@ -65,7 +69,9 @@ def test_create_home_rejects_invalid_name_characters_and_spaces(client, owner_us
 
 
 def test_create_home_trims_name(client, owner_user):
-    response = client.post("/home/", json={"name": "  My Home  "}, headers=owner_user["headers"])
+    response = client.post(
+        "/home/", json={"name": "  My Home  "}, headers=owner_user["headers"]
+    )
 
     body = assert_home_created(response)
     assert body["home"]["name"] == "My Home"
@@ -95,13 +101,17 @@ def test_create_home_fails_if_user_already_has_home(client, owner_home):
 @pytest.mark.parametrize("name", ["MyHome", "CasaNova"])
 def test_create_home_generates_unique_unused_code(client, owner_home, make_user, name):
     another_user = make_user(username="freshhome", email="freshhome@example.com")
-    response = client.post("/home/", json={"name": name}, headers=another_user["headers"])
+    response = client.post(
+        "/home/", json={"name": name}, headers=another_user["headers"]
+    )
 
     body = assert_home_created(response)
     assert body["home"]["invite_code"] != owner_home["invite_code"]
 
 
-def test_user_can_create_new_home_after_leaving_previous_one(client, private_home_setup):
+def test_user_can_create_new_home_after_leaving_previous_one(
+    client, private_home_setup
+):
     leave_response = client.delete("/home/leave", headers=private_home_setup["headers"])
     create_response = client.post(
         "/home/",
@@ -162,9 +172,13 @@ def test_create_home_handles_repository_failure(unsafe_client):
     def override_get_db():
         yield BrokenDB()
 
-    unsafe_client.app.dependency_overrides[auth.get_current_user] = override_current_user
+    unsafe_client.app.dependency_overrides[auth.get_current_user] = (
+        override_current_user
+    )
     unsafe_client.app.dependency_overrides[home_routes.get_db] = override_get_db
 
-    response = unsafe_client.post("/home/", json={"name": "My Home"}, headers={"Authorization": "Bearer anything"})
+    response = unsafe_client.post(
+        "/home/", json={"name": "My Home"}, headers={"Authorization": "Bearer anything"}
+    )
 
     assert response.status_code == 500

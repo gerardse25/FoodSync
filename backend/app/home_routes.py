@@ -40,6 +40,7 @@ router = APIRouter(prefix="/home", tags=["home"])
 
 # ── Helpers privats ───────────────────────────────────────────────────────────
 
+
 def _get_active_membership(user_id, db: Session) -> HomeMembership | None:
     """Retorna la membresia activa de l'usuari o None."""
     return (
@@ -54,11 +55,7 @@ def _get_active_membership(user_id, db: Session) -> HomeMembership | None:
 
 def _get_active_home(home_id, db: Session) -> Home | None:
     """Retorna la llar activa o None."""
-    return (
-        db.query(Home)
-        .filter(Home.id == home_id, Home.is_active)
-        .first()
-    )
+    return db.query(Home).filter(Home.id == home_id, Home.is_active).first()
 
 
 def _count_active_members(home_id, db: Session) -> int:
@@ -87,11 +84,7 @@ def _get_members_with_users(home_id, db: Session) -> list[MemberResponse]:
 
     result = []
     for m in memberships:
-        user = (
-            db.query(app.models.User)
-            .filter(app.models.User.id == m.user_id)
-            .first()
-        )
+        user = db.query(app.models.User).filter(app.models.User.id == m.user_id).first()
         if user:
             result.append(
                 MemberResponse(
@@ -154,6 +147,7 @@ def _dissolve_home(home: Home, db: Session) -> None:
 
 
 # ── Endpoints ─────────────────────────────────────────────────────────────────
+
 
 @router.post("/", status_code=status.HTTP_201_CREATED)
 def create_home(
@@ -372,9 +366,7 @@ def join_home(
     return {
         "message": "T'has unit a la llar correctament",
         "code": "HOME_JOINED",
-        "home": _build_home_response(
-            home, members, user.id, include_members=True
-        ),
+        "home": _build_home_response(home, members, user.id, include_members=True),
     }
 
 
@@ -406,11 +398,10 @@ def get_home(
         )
 
     members = _get_members_with_users(home.id, db)
-    response_obj = _build_home_response(
-        home, members, user.id, include_members=True
-    )
+    response_obj = _build_home_response(home, members, user.id, include_members=True)
 
     import fastapi.encoders
+
     # Convertim a dict per evitar lazy-loading fora de la sessió
     data = fastapi.encoders.jsonable_encoder(response_obj)
     data["code"] = "HOME_RETRIEVED"
@@ -467,9 +458,7 @@ def regenerate_invite_code(
         return JSONResponse(
             status_code=403,
             content={
-                "detail": (
-                    "Només el propietari pot regenerar el codi d'invitació"
-                ),
+                "detail": ("Només el propietari pot regenerar el codi d'invitació"),
                 "code": "OWNER_PERMISSION_REQUIRED",
             },
         )
@@ -481,9 +470,7 @@ def regenerate_invite_code(
     new_code = _generate_invite_code()
     attempts = 0
     while (
-        db.query(Home)
-        .filter(Home.invite_code == new_code, Home.is_active)
-        .first()
+        db.query(Home).filter(Home.invite_code == new_code, Home.is_active).first()
         and attempts < 5
     ):
         new_code = _generate_invite_code()
@@ -544,14 +531,10 @@ def leave_home(
 
             new_owner_user = (
                 db.query(app.models.User)
-                .filter(
-                    app.models.User.id == new_owner_membership.user_id
-                )
+                .filter(app.models.User.id == new_owner_membership.user_id)
                 .first()
             )
-            new_owner_name = (
-                new_owner_user.username if new_owner_user else "usuari"
-            )
+            new_owner_name = new_owner_user.username if new_owner_user else "usuari"
 
             membership.is_active = False
             membership.left_at = now
@@ -582,9 +565,7 @@ def leave_home(
             return JSONResponse(
                 status_code=200,
                 content={
-                    "message": (
-                        "Has sortit de la llar i aquesta ha estat dissolta"
-                    ),
+                    "message": ("Has sortit de la llar i aquesta ha estat dissolta"),
                     "code": "HOME_LEFT_AND_DISSOLVED",
                 },
             )
@@ -677,21 +658,15 @@ def kick_member(
     db.commit()
 
     kicked_user = (
-        db.query(app.models.User)
-        .filter(app.models.User.id == data.user_id)
-        .first()
+        db.query(app.models.User).filter(app.models.User.id == data.user_id).first()
     )
-    kicked_username = (
-        kicked_user.username if kicked_user else str(data.user_id)
-    )
+    kicked_username = kicked_user.username if kicked_user else str(data.user_id)
 
     return JSONResponse(
         status_code=200,
         content={
             "code": "MEMBER_KICKED",
-            "message": (
-                f"L'usuari '{kicked_username}' ha estat expulsat de la llar"
-            ),
+            "message": (f"L'usuari '{kicked_username}' ha estat expulsat de la llar"),
         },
     )
 
@@ -741,9 +716,7 @@ def sync_home(
         content={
             "home_active": True,
             "home_id": str(home.id),
-            "updated_at": (
-                home.updated_at.isoformat() if home.updated_at else None
-            ),
+            "updated_at": (home.updated_at.isoformat() if home.updated_at else None),
             "member_count": member_count,
             "code": "HOME_SYNC_OK",
         },

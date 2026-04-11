@@ -54,7 +54,9 @@ def app_modules(tmp_path, monkeypatch):
             kwargs.setdefault("connect_args", {"check_same_thread": False})
         return real_create_engine(url, *args, **kwargs)
 
-    monkeypatch.setattr(sqlalchemy, "create_engine", create_engine_for_tests, raising=True)
+    monkeypatch.setattr(
+        sqlalchemy, "create_engine", create_engine_for_tests, raising=True
+    )
 
     database = importlib.import_module("app.database")
     models = importlib.import_module("app.models")
@@ -111,7 +113,12 @@ def unsafe_client(app_modules):
 def make_user(client):
     created = []
 
-    def _make_user(*, username: str | None = None, email: str | None = None, password: str = "Passw0rd"):
+    def _make_user(
+        *,
+        username: str | None = None,
+        email: str | None = None,
+        password: str = "Passw0rd",
+    ):
         idx = len(created) + 1
         username = username or f"user{idx:02d}"
         email = email or f"user{idx:02d}@example.com"
@@ -185,7 +192,9 @@ def outsider_user(make_user):
 @pytest.fixture
 def create_home_api(client):
     def _create_home(user_ctx, name: str = "My Home"):
-        response = client.post("/home/", json={"name": name}, headers=user_ctx["headers"])
+        response = client.post(
+            "/home/", json={"name": name}, headers=user_ctx["headers"]
+        )
         return response
 
     return _create_home
@@ -205,7 +214,9 @@ def join_home_api(client):
 
 @pytest.fixture
 def owner_home(client, owner_user):
-    response = client.post("/home/", json={"name": "Shared Home"}, headers=owner_user["headers"])
+    response = client.post(
+        "/home/", json={"name": "Shared Home"}, headers=owner_user["headers"]
+    )
     assert response.status_code == 201, response.text
     body = response.json()
     home = body["home"]
@@ -252,7 +263,9 @@ def shared_home_setup(client, owner_home, member1_user, member2_user):
 @pytest.fixture
 def private_home_setup(client, make_user):
     user = make_user(username="private01", email="private01@example.com")
-    response = client.post("/home/", json={"name": "Private Home"}, headers=user["headers"])
+    response = client.post(
+        "/home/", json={"name": "Private Home"}, headers=user["headers"]
+    )
     assert response.status_code == 201, response.text
     body = response.json()
     return {
@@ -329,4 +342,6 @@ def home_capacity_setup(client, owner_home, make_user):
 
 
 def parse_member_roles(home_payload: dict) -> dict[str, str]:
-    return {member["username"]: member["role"] for member in home_payload.get("members", [])}
+    return {
+        member["username"]: member["role"] for member in home_payload.get("members", [])
+    }

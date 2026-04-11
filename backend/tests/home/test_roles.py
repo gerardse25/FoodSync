@@ -4,7 +4,9 @@ import pytest
 
 
 def test_owner_can_view_invitation_code(client, shared_home_setup):
-    response = client.get("/home/invite-code", headers=shared_home_setup["owner_headers"])
+    response = client.get(
+        "/home/invite-code", headers=shared_home_setup["owner_headers"]
+    )
 
     assert response.status_code == 200, response.text
     body = response.json()
@@ -14,7 +16,9 @@ def test_owner_can_view_invitation_code(client, shared_home_setup):
 
 
 def test_member_cannot_view_invitation_code(client, shared_home_setup):
-    response = client.get("/home/invite-code", headers=shared_home_setup["member1_headers"])
+    response = client.get(
+        "/home/invite-code", headers=shared_home_setup["member1_headers"]
+    )
 
     assert response.status_code == 403, response.text
     body = response.json()
@@ -32,7 +36,9 @@ def test_invitation_code_requires_authentication(client, headers):
 
 def test_owner_can_regenerate_invitation_code(client, shared_home_setup):
     old_code = shared_home_setup["invite_code"]
-    response = client.post("/home/invite-code/regenerate", headers=shared_home_setup["owner_headers"])
+    response = client.post(
+        "/home/invite-code/regenerate", headers=shared_home_setup["owner_headers"]
+    )
 
     assert response.status_code == 200, response.text
     body = response.json()
@@ -50,8 +56,12 @@ def test_regenerate_invitation_code_requires_authentication(client, headers):
 
 
 @pytest.mark.parametrize("headers_key", ["member1_headers", "member2_headers"])
-def test_member_cannot_regenerate_invitation_code(client, shared_home_setup, headers_key):
-    response = client.post("/home/invite-code/regenerate", headers=shared_home_setup[headers_key])
+def test_member_cannot_regenerate_invitation_code(
+    client, shared_home_setup, headers_key
+):
+    response = client.post(
+        "/home/invite-code/regenerate", headers=shared_home_setup[headers_key]
+    )
 
     assert response.status_code == 403, response.text
     body = response.json()
@@ -156,9 +166,13 @@ def test_regenerate_invitation_code_handles_repository_failure(unsafe_client):
     def override_get_db():
         yield BrokenDB()
 
-    unsafe_client.app.dependency_overrides[auth.get_current_user] = override_current_user
+    unsafe_client.app.dependency_overrides[auth.get_current_user] = (
+        override_current_user
+    )
     unsafe_client.app.dependency_overrides[home_routes.get_db] = override_get_db
 
-    response = unsafe_client.post("/home/invite-code/regenerate", headers={"Authorization": "Bearer anything"})
+    response = unsafe_client.post(
+        "/home/invite-code/regenerate", headers={"Authorization": "Bearer anything"}
+    )
 
     assert response.status_code == 500
