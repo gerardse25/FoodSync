@@ -862,10 +862,63 @@ def delete_account(
     current=Depends(app.auth.get_current_user),
     db: Session = Depends(get_db),
 ):
+    from app.home_models import Home, HomeMembership
+
     user, _session = current
+    now = datetime.utcnow()
+    result_code = "ACCOUNT_DELETED_NO_HOME"
 
+    # ── Gestió de llar ────────────────────────────────────────
+    membership = (
+        db.query(HomeMembership)
+        .filter(HomeMembership.user_id == user.id, HomeMembership.is_active)
+        .first()
+    )
+
+    if membership:
+        home = (
+            db.query(Home).filter(Home.id == membership.home_id, Home.is_active).first()
+        )
+
+        if membership.role == "owner":
+            other_memberships = (
+                db.query(HomeMembership)
+                .filter(
+                    HomeMembership.home_id == membership.home_id,
+                    HomeMembership.is_active,
+                    HomeMembership.user_id != user.id,
+                )
+                .order_by(HomeMembership.joined_at.asc())
+                .all()
+            )
+
+            membership.is_active = False
+            membership.left_at = now
+
+            if other_memberships:
+                # Transferir propietat al membre més antic
+                new_owner = other_memberships[0]
+                new_owner.role = "owner"
+                if home:
+                    home.owner_id = new_owner.user_id
+                    home.updated_at = now
+                result_code = "ACCOUNT_DELETED_AND_OWNER_TRANSFERRED"
+            else:
+                # Dissoldre la llar
+                if home:
+                    home.is_active = False
+                    home.updated_at = now
+                result_code = "ACCOUNT_DELETED_AND_HOME_DISSOLVED"
+        else:
+            # Membre normal
+            membership.is_active = False
+            membership.left_at = now
+            if home:
+                home.updated_at = now
+            result_code = "ACCOUNT_DELETED_AND_REMOVED_FROM_HOME"
+
+    # ── Desactivar compte ─────────────────────────────────────
     user.is_active = False
-
     old_email_normalized = user.email_normalized
     user.email_normalized = f"deleted::{user.id}::{old_email_normalized}"
     user.email = f"deleted::{user.id}@foodsync.local"
@@ -873,16 +926,19 @@ def delete_account(
 
     sessions = (
         db.query(app.models.Session)
-        .filter(
-            app.models.Session.user_id == user.id,
-            app.models.Session.is_active,
-        )
+        .filter(app.models.Session.user_id == user.id, app.models.Session.is_active)
         .all()
     )
-
     for session in sessions:
         session.is_active = False
 
     db.commit()
+    db.expire_all()
 
-    return {"message": "El teu compte s'ha desactivat correctament"}
+    return JSONResponse(
+        status_code=200,
+        content={
+            "message": "El teu compte s'ha desactivat correctament",
+            "code": result_code,
+        },
+    )
