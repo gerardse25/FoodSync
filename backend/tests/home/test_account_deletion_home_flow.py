@@ -1,4 +1,3 @@
-import pytest
 
 
 def test_delete_account_without_home_has_no_home_side_effects(client, registered_user):

@@ -2,7 +2,6 @@ import types
 
 import pytest
 
-
 VALID_CREATE_CODES = {"HOME_CREATED"}
 
 

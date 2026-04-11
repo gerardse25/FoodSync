@@ -1,11 +1,11 @@
-from fastapi import FastAPI, Request, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse
 
-import app.models
 import app.home_models
+import app.models
 from app.database import Base, engine
-from app.routes import router
 from app.home_routes import router as home_router
+from app.routes import router
 
 app = FastAPI()
 

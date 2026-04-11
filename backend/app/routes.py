@@ -939,5 +939,8 @@ def delete_account(
 
     return JSONResponse(
         status_code=200,
-        content={"message": "El teu compte s'ha desactivat correctament", "code": result_code},
+        content={
+            "message": "El teu compte s'ha desactivat correctament", 
+            "code": result_code
+        },
     )
