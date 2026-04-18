@@ -2,9 +2,11 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse
 
 import app.home_models
+import app.inventory_models
 import app.models
 from app.database import Base, engine
 from app.home_routes import router as home_router
+from app.inventory_routes import router as inventory_router
 from app.routes import router
 
 app = FastAPI()
@@ -13,6 +15,7 @@ Base.metadata.create_all(bind=engine)
 
 app.include_router(router)
 app.include_router(home_router)
+app.include_router(inventory_router)
 
 # ==================== EXCEPTION HANDLERS ====================
 
