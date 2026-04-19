@@ -1,5 +1,6 @@
-import pytest
 import uuid
+
+import pytest
 
 
 def assert_backend_error(response, expected_status, expected_code):

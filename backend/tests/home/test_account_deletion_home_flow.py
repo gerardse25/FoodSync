@@ -1,3 +1,6 @@
+import pytest
+
+
 def test_delete_account_without_home_has_no_home_side_effects(client, registered_user):
     delete_response = client.delete("/auth/delete", headers=registered_user["headers"])
 
@@ -61,8 +64,6 @@ def test_delete_account_of_shared_home_owner_transfers_ownership_to_oldest_membe
 
 
 ###SPRINT 3
-import pytest
-
 
 @pytest.mark.parametrize("who", ["owner", "member"])
 def test_user_deleting_account_makes_private_products_public(
