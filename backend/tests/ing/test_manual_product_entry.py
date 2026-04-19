@@ -11,7 +11,9 @@ def assert_backend_error(response, expected_status, expected_code):
     assert "detail" in body
 
 
-def test_can_add_new_product_manually(client, shared_home_setup, make_product_data, list_home_products_db):
+def test_can_add_new_product_manually(
+    client, shared_home_setup, make_product_data, list_home_products_db
+):
     headers = shared_home_setup["owner_headers"]
     home_id = shared_home_setup["home_id"]
 
@@ -100,7 +102,9 @@ def test_added_product_is_persisted_in_home_products(
     assert add_response.json()["code"] == "PRODUCT_CREATED"
 
     products = list_home_products_db(home_id)
-    persisted = next((item for item in products if item["name"] == product["name"]), None)
+    persisted = next(
+        (item for item in products if item["name"] == product["name"]), None
+    )
     assert persisted is not None
     assert persisted["category"] == product["category"]
     assert persisted["quantity"] == product["quantity"]
@@ -129,7 +133,9 @@ def test_added_product_is_shown_in_inventory(
     assert add_response.json()["code"] == "PRODUCT_CREATED"
 
     products = list_home_products_db(home_id)
-    shown_product = next((item for item in products if item["name"] == product["name"]), None)
+    shown_product = next(
+        (item for item in products if item["name"] == product["name"]), None
+    )
     assert shown_product is not None
     assert shown_product["name"] == product["name"]
     assert shown_product["quantity"] == product["quantity"]
@@ -388,13 +394,13 @@ def test_cannot_add_product_with_invalid_quantity(
 @pytest.mark.parametrize(
     "price",
     [
-        "1,50",       # coma decimal
-        "12.345",     # demasiados decimales
-        "abc",        # no numérico
-        "12.3.4",     # formato inválido
-        "10 euros",   # texto mezclado
-        "",           # vacío
-        " ",          # solo espacios
+        "1,50",  # coma decimal
+        "12.345",  # demasiados decimales
+        "abc",  # no numérico
+        "12.3.4",  # formato inválido
+        "10 euros",  # texto mezclado
+        "",  # vacío
+        " ",  # solo espacios
     ],
 )
 def test_cannot_add_product_with_invalid_price_format(

@@ -65,6 +65,7 @@ def test_delete_account_of_shared_home_owner_transfers_ownership_to_oldest_membe
 
 ###SPRINT 3
 
+
 @pytest.mark.parametrize("who", ["owner", "member"])
 def test_user_deleting_account_makes_private_products_public(
     client,
@@ -74,12 +75,20 @@ def test_user_deleting_account_makes_private_products_public(
 ):
     if who == "owner":
         delete_headers = shared_home_with_products["owner_headers"]
-        target_product_name = shared_home_with_products["products"]["owner_private"]["payload"]["name"]
-        other_private_product_name = shared_home_with_products["products"]["member1_private"]["payload"]["name"]
+        target_product_name = shared_home_with_products["products"]["owner_private"][
+            "payload"
+        ]["name"]
+        other_private_product_name = shared_home_with_products["products"][
+            "member1_private"
+        ]["payload"]["name"]
     else:
         delete_headers = shared_home_with_products["member1_headers"]
-        target_product_name = shared_home_with_products["products"]["member1_private"]["payload"]["name"]
-        other_private_product_name = shared_home_with_products["products"]["owner_private"]["payload"]["name"]
+        target_product_name = shared_home_with_products["products"]["member1_private"][
+            "payload"
+        ]["name"]
+        other_private_product_name = shared_home_with_products["products"][
+            "owner_private"
+        ]["payload"]["name"]
 
     home_id = shared_home_with_products["home_id"]
 
@@ -106,7 +115,11 @@ def test_user_deleting_account_makes_private_products_public(
     assert new_target_product["owner_user_id"] is None
 
     new_other_product = next(
-        (product for product in new_products if product["name"] == other_private_product_name),
+        (
+            product
+            for product in new_products
+            if product["name"] == other_private_product_name
+        ),
         None,
     )
     assert new_other_product is not None

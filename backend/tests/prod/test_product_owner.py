@@ -37,7 +37,9 @@ def test_can_add_private_product_assigned_to_specific_member(
     assert body["product"]["is_private"] is True
 
     products = list_home_products_db(home_id)
-    created_product = next((item for item in products if item["name"] == product["name"]), None)
+    created_product = next(
+        (item for item in products if item["name"] == product["name"]), None
+    )
     assert created_product is not None
     assert created_product["owner_user_id"] == member1_id
     assert created_product["is_private"] is True
@@ -69,7 +71,9 @@ def test_can_add_product_without_specific_owner_as_public(
     assert body["product"]["is_private"] is False
 
     products = list_home_products_db(home_id)
-    created_product = next((item for item in products if item["name"] == product["name"]), None)
+    created_product = next(
+        (item for item in products if item["name"] == product["name"]), None
+    )
     assert created_product is not None
     assert created_product["owner_user_id"] is None
     assert created_product["is_private"] is False

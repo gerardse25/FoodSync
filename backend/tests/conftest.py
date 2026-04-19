@@ -59,7 +59,9 @@ def app_modules(tmp_path, monkeypatch):
             kwargs.setdefault("connect_args", {"check_same_thread": False})
         return real_create_engine(url, *args, **kwargs)
 
-    monkeypatch.setattr(sqlalchemy, "create_engine", create_engine_for_tests, raising=True)
+    monkeypatch.setattr(
+        sqlalchemy, "create_engine", create_engine_for_tests, raising=True
+    )
 
     database = importlib.import_module("app.database")
     models = importlib.import_module("app.models")
@@ -135,7 +137,12 @@ def unsafe_client(app_modules):
 def make_user(client):
     created = []
 
-    def _make_user(*, username: str | None = None, email: str | None = None, password: str = "Passw0rd"):
+    def _make_user(
+        *,
+        username: str | None = None,
+        email: str | None = None,
+        password: str = "Passw0rd",
+    ):
         idx = len(created) + 1
         username = username or f"user{idx:02d}"
         email = email or f"user{idx:02d}@example.com"
@@ -209,7 +216,9 @@ def outsider_user(make_user):
 @pytest.fixture
 def create_home_api(client):
     def _create_home(user_ctx, name: str = "My Home"):
-        response = client.post("/home/", json={"name": name}, headers=user_ctx["headers"])
+        response = client.post(
+            "/home/", json={"name": name}, headers=user_ctx["headers"]
+        )
         return response
 
     return _create_home
@@ -229,7 +238,9 @@ def join_home_api(client):
 
 @pytest.fixture
 def owner_home(client, owner_user):
-    response = client.post("/home/", json={"name": "Shared Home"}, headers=owner_user["headers"])
+    response = client.post(
+        "/home/", json={"name": "Shared Home"}, headers=owner_user["headers"]
+    )
     assert response.status_code == 201, response.text
     body = response.json()
     home = body["home"]
@@ -276,7 +287,9 @@ def shared_home_setup(client, owner_home, member1_user, member2_user):
 @pytest.fixture
 def private_home_setup(client, make_user):
     user = make_user(username="private01", email="private01@example.com")
-    response = client.post("/home/", json={"name": "Private Home"}, headers=user["headers"])
+    response = client.post(
+        "/home/", json={"name": "Private Home"}, headers=user["headers"]
+    )
     assert response.status_code == 201, response.text
     body = response.json()
     return {
@@ -352,7 +365,9 @@ def home_capacity_setup(client, owner_home, make_user):
 
 
 def parse_member_roles(home_payload: dict) -> dict[str, str]:
-    return {member["username"]: member["role"] for member in home_payload.get("members", [])}
+    return {
+        member["username"]: member["role"] for member in home_payload.get("members", [])
+    }
 
 
 @pytest.fixture
@@ -415,11 +430,19 @@ def seed_product_db(client):
     ):
         db = SessionLocal()
         try:
-            home_uuid = uuid.UUID(str(home_id)) if not isinstance(home_id, uuid.UUID) else home_id
+            home_uuid = (
+                uuid.UUID(str(home_id))
+                if not isinstance(home_id, uuid.UUID)
+                else home_id
+            )
             creator_uuid = uuid.UUID(created_by_ctx["user"]["id"])
             owner_uuid = None
             if owner_user_id is not None:
-                owner_uuid = uuid.UUID(str(owner_user_id)) if not isinstance(owner_user_id, uuid.UUID) else owner_user_id
+                owner_uuid = (
+                    uuid.UUID(str(owner_user_id))
+                    if not isinstance(owner_user_id, uuid.UUID)
+                    else owner_user_id
+                )
 
             # if not isinstance(price, Decimal):
             #     price = Decimal(str(price))
@@ -448,15 +471,27 @@ def seed_product_db(client):
                     "category": product.category,
                     "quantity": product.quantity,
                     "price": str(product.price),
-                    "purchase_date": product.purchase_date.isoformat() if product.purchase_date else None,
-                    "expiration_date": product.expiration_date.isoformat() if product.expiration_date else None,
-                    "owner_user_id": str(product.owner_user_id) if product.owner_user_id else None,
+                    "purchase_date": (
+                        product.purchase_date.isoformat()
+                        if product.purchase_date
+                        else None
+                    ),
+                    "expiration_date": (
+                        product.expiration_date.isoformat()
+                        if product.expiration_date
+                        else None
+                    ),
+                    "owner_user_id": (
+                        str(product.owner_user_id) if product.owner_user_id else None
+                    ),
                     "is_private": product.owner_user_id is not None,
                 }
 
             inventory_models = app_modules["inventory_models"]
             if inventory_models is None:
-                raise RuntimeError("La rama no tiene ni product_models ni inventory_models")
+                raise RuntimeError(
+                    "La rama no tiene ni product_models ni inventory_models"
+                )
 
             Category = inventory_models.Category
             CatalogProduct = inventory_models.CatalogProduct
@@ -496,8 +531,16 @@ def seed_product_db(client):
                 "quantity": inv_product.quantitat,
                 "price": str(price),
                 "purchase_date": purchase_date.isoformat() if purchase_date else None,
-                "expiration_date": inv_product.data_caducitat.isoformat() if inv_product.data_caducitat else None,
-                "owner_user_id": str(inv_product.id_propietari_privat) if inv_product.id_propietari_privat else None,
+                "expiration_date": (
+                    inv_product.data_caducitat.isoformat()
+                    if inv_product.data_caducitat
+                    else None
+                ),
+                "owner_user_id": (
+                    str(inv_product.id_propietari_privat)
+                    if inv_product.id_propietari_privat
+                    else None
+                ),
                 "is_private": inv_product.id_propietari_privat is not None,
             }
         finally:
@@ -518,11 +561,19 @@ def list_home_products_db(client):
     def _list_home_products_db(home_id: str | uuid.UUID):
         db = SessionLocal()
         try:
-            home_uuid = uuid.UUID(str(home_id)) if not isinstance(home_id, uuid.UUID) else home_id
+            home_uuid = (
+                uuid.UUID(str(home_id))
+                if not isinstance(home_id, uuid.UUID)
+                else home_id
+            )
 
             if app_modules["product_models"] is not None:
                 Product = app_modules["product_models"].Product
-                rows = db.query(Product).filter(Product.home_id == home_uuid, Product.is_active.is_(True)).all()
+                rows = (
+                    db.query(Product)
+                    .filter(Product.home_id == home_uuid, Product.is_active.is_(True))
+                    .all()
+                )
                 return [
                     {
                         "id": str(row.id),
@@ -531,9 +582,17 @@ def list_home_products_db(client):
                         "category": row.category,
                         "quantity": row.quantity,
                         "price": str(row.price),
-                        "purchase_date": row.purchase_date.isoformat() if row.purchase_date else None,
-                        "expiration_date": row.expiration_date.isoformat() if row.expiration_date else None,
-                        "owner_user_id": str(row.owner_user_id) if row.owner_user_id else None,
+                        "purchase_date": (
+                            row.purchase_date.isoformat() if row.purchase_date else None
+                        ),
+                        "expiration_date": (
+                            row.expiration_date.isoformat()
+                            if row.expiration_date
+                            else None
+                        ),
+                        "owner_user_id": (
+                            str(row.owner_user_id) if row.owner_user_id else None
+                        ),
                         "is_private": row.owner_user_id is not None,
                     }
                     for row in rows
@@ -546,8 +605,14 @@ def list_home_products_db(client):
 
             rows = (
                 db.query(InventoryProduct, CatalogProduct, Category)
-                .join(CatalogProduct, InventoryProduct.id_producte_cataleg == CatalogProduct.id_producte_cataleg)
-                .outerjoin(Category, CatalogProduct.id_categoria == Category.id_categoria)
+                .join(
+                    CatalogProduct,
+                    InventoryProduct.id_producte_cataleg
+                    == CatalogProduct.id_producte_cataleg,
+                )
+                .outerjoin(
+                    Category, CatalogProduct.id_categoria == Category.id_categoria
+                )
                 .filter(InventoryProduct.id_llar == home_uuid)
                 .all()
             )
@@ -563,8 +628,16 @@ def list_home_products_db(client):
                         "quantity": inv_row.quantitat,
                         "price": None,
                         "purchase_date": None,
-                        "expiration_date": inv_row.data_caducitat.isoformat() if inv_row.data_caducitat else None,
-                        "owner_user_id": str(inv_row.id_propietari_privat) if inv_row.id_propietari_privat else None,
+                        "expiration_date": (
+                            inv_row.data_caducitat.isoformat()
+                            if inv_row.data_caducitat
+                            else None
+                        ),
+                        "owner_user_id": (
+                            str(inv_row.id_propietari_privat)
+                            if inv_row.id_propietari_privat
+                            else None
+                        ),
                         "is_private": inv_row.id_propietari_privat is not None,
                     }
                 )
@@ -628,14 +701,19 @@ def shared_home_with_products(shared_home_setup, make_product_data, seed_product
         "member2_headers": shared_home_setup["member2_headers"],
         "products": {
             "owner_private": {"payload": owner_private_payload, "db": owner_private},
-            "member1_private": {"payload": member1_private_payload, "db": member1_private},
+            "member1_private": {
+                "payload": member1_private_payload,
+                "db": member1_private,
+            },
             "public_product": {"payload": public_payload, "db": public_product},
         },
     }
 
 
 @pytest.fixture
-def shared_home_with_single_product(shared_home_setup, make_product_data, seed_product_db):
+def shared_home_with_single_product(
+    shared_home_setup, make_product_data, seed_product_db
+):
     owner = shared_home_setup["owner"]
 
     only_payload = make_product_data(

@@ -188,8 +188,12 @@ def test_kicked_member_private_products_become_public(
     home_id = shared_home_with_products["home_id"]
     kicked_user_id = shared_home_with_products["member1"]["user"]["id"]
 
-    target_product_name = shared_home_with_products["products"]["member1_private"]["payload"]["name"]
-    other_private_product_name = shared_home_with_products["products"]["owner_private"]["payload"]["name"]
+    target_product_name = shared_home_with_products["products"]["member1_private"][
+        "payload"
+    ]["name"]
+    other_private_product_name = shared_home_with_products["products"]["owner_private"][
+        "payload"
+    ]["name"]
 
     old_products = list_home_products_db(home_id)
 
@@ -221,7 +225,11 @@ def test_kicked_member_private_products_become_public(
     assert new_target_product["owner_user_id"] is None
 
     new_other_product = next(
-        (product for product in new_products if product["name"] == other_private_product_name),
+        (
+            product
+            for product in new_products
+            if product["name"] == other_private_product_name
+        ),
         None,
     )
     assert new_other_product is not None
