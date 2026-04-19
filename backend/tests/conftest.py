@@ -373,8 +373,8 @@ def make_product_data():
         idx = len(created) + 1
         product_name = name or f"Product{idx:02d}"
 
-        if not isinstance(price, Decimal):
-            price = Decimal(str(price))
+        # if not isinstance(price, Decimal):
+        #     price = Decimal(str(price))
 
         data = {
             "name": product_name,
@@ -422,8 +422,8 @@ def seed_product_db(client):
             if owner_user_id is not None:
                 owner_uuid = uuid.UUID(str(owner_user_id)) if not isinstance(owner_user_id, uuid.UUID) else owner_user_id
 
-            if not isinstance(price, Decimal):
-                price = Decimal(str(price))
+            # if not isinstance(price, Decimal):
+            #     price = Decimal(str(price))
 
             if app_modules["product_models"] is not None:
                 Product = app_modules["product_models"].Product

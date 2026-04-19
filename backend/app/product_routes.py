@@ -49,6 +49,15 @@ def _get_active_home(home_id, db: Session):
 
 def _normalize_product_text(value: str | None, field_name: str, max_len: int):
     raw = value if value is not None else ""
+
+    # Validar caracteres inválidos ANTES del strip
+    if contains_control_characters(raw) or contains_escape_sequences(raw):
+        return None, _json_error(
+            f"{field_name.upper()}_INVALID_CHARACTERS",
+            f"El camp {field_name} conté caràcters no permesos",
+            400,
+        )
+
     trimmed = raw.strip()
 
     if not trimmed:
@@ -119,6 +128,9 @@ def create_manual_product(
 
     if data.price < 0:
         return _json_error("PRICE_INVALID", "El preu no pot ser negatiu", 422)
+    
+    if data.price != round(data.price, 2):
+        return _json_error("PRICE_INVALID", "El preu no pot tenir més de 2 decimals", 422)
 
     if data.quantity <= 0:
         return _json_error(
