@@ -863,6 +863,7 @@ def delete_account(
     db: Session = Depends(get_db),
 ):
     from app.home_models import Home, HomeMembership
+    from app.product_models import Product
 
     user, _session = current
     now = datetime.utcnow()
@@ -879,6 +880,15 @@ def delete_account(
         home = (
             db.query(Home).filter(Home.id == membership.home_id, Home.is_active).first()
         )
+        if home:
+            db.query(Product).filter(
+                Product.home_id == home.id,
+                Product.owner_user_id == user.id,
+                Product.is_active,
+            ).update(
+                {"owner_user_id": None},
+                synchronize_session=False,
+            )
 
         if membership.role == "owner":
             other_memberships = (
