@@ -6,6 +6,7 @@ import app.models
 from app.database import Base, engine
 from app.home_routes import router as home_router
 from app.routes import router
+from app.product_routes import router as product_router
 
 app = FastAPI()
 
@@ -13,6 +14,7 @@ Base.metadata.create_all(bind=engine)
 
 app.include_router(router)
 app.include_router(home_router)
+app.include_router(product_router)
 
 # ==================== EXCEPTION HANDLERS ====================
 
