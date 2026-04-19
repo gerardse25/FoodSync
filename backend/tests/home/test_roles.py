@@ -176,3 +176,53 @@ def test_regenerate_invitation_code_handles_repository_failure(unsafe_client):
     )
 
     assert response.status_code == 500
+
+
+###SPRINT 3
+def test_kicked_member_private_products_become_public(
+    client,
+    shared_home_with_products,
+    list_home_products_db,
+):
+    owner_headers = shared_home_with_products["owner_headers"]
+    home_id = shared_home_with_products["home_id"]
+    kicked_user_id = shared_home_with_products["member1"]["user"]["id"]
+
+    target_product_name = shared_home_with_products["products"]["member1_private"]["payload"]["name"]
+    other_private_product_name = shared_home_with_products["products"]["owner_private"]["payload"]["name"]
+
+    old_products = list_home_products_db(home_id)
+
+    old_target_product = next(
+        (product for product in old_products if product["name"] == target_product_name),
+        None,
+    )
+    assert old_target_product is not None
+    assert old_target_product["is_private"] is True
+
+    kick_response = client.request(
+        "DELETE",
+        "/home/kick",
+        json={"user_id": kicked_user_id},
+        headers=owner_headers,
+    )
+    assert kick_response.status_code == 200, kick_response.text
+    body = kick_response.json()
+    assert body["code"] == "MEMBER_KICKED"
+
+    new_products = list_home_products_db(home_id)
+
+    new_target_product = next(
+        (product for product in new_products if product["name"] == target_product_name),
+        None,
+    )
+    assert new_target_product is not None
+    assert new_target_product["is_private"] is False
+    assert new_target_product["owner_user_id"] is None
+
+    new_other_product = next(
+        (product for product in new_products if product["name"] == other_private_product_name),
+        None,
+    )
+    assert new_other_product is not None
+    assert new_other_product["is_private"] is True
