@@ -9,7 +9,11 @@ import app.models
 from app.database import get_db
 from app.home_models import Home, HomeMembership
 from app.product_models import Product
-from app.product_schemas import CreateManualProductSchema
+from app.product_schemas import (
+    CATEGORY_LABELS_CA,
+    CategoryOptionResponse,
+    CreateManualProductSchema,
+)
 from app.validation import contains_control_characters, contains_escape_sequences
 
 router = APIRouter(prefix="/products", tags=["products"])
@@ -47,17 +51,19 @@ def _get_active_home(home_id, db: Session):
     )
 
 
+@router.get("/categories", response_model=list[CategoryOptionResponse])
+def get_product_categories():
+    return [
+        {
+            "value": category.value,
+            "label": label,
+        }
+        for category, label in CATEGORY_LABELS_CA.items()
+    ]
+
+
 def _normalize_product_text(value: str | None, field_name: str, max_len: int):
     raw = value if value is not None else ""
-
-    # Validar caracteres inválidos ANTES del strip
-    if contains_control_characters(raw) or contains_escape_sequences(raw):
-        return None, _json_error(
-            f"{field_name.upper()}_INVALID_CHARACTERS",
-            f"El camp {field_name} conté caràcters no permesos",
-            400,
-        )
-
     trimmed = raw.strip()
 
     if not trimmed:
@@ -116,9 +122,10 @@ def create_manual_product(
     if error:
         return error
 
-    category, error = _normalize_product_text(data.category, "category", 64)
-    if error:
-        return error
+    if data.category is None:
+        return _json_error("CATEGORY_REQUIRED", "El camp category és obligatori", 422)
+
+    category = data.category.value
 
     if data.price is None:
         return _json_error("PRICE_REQUIRED", "El camp price és obligatori", 422)
@@ -129,14 +136,11 @@ def create_manual_product(
     if data.price < 0:
         return _json_error("PRICE_INVALID", "El preu no pot ser negatiu", 422)
 
-    if data.price != round(data.price, 2):
-        return _json_error(
-            "PRICE_INVALID", "El preu no pot tenir més de 2 decimals", 422
-        )
-
     if data.quantity <= 0:
         return _json_error(
-            "QUANTITY_INVALID", "La quantitat ha de ser superior a 0", 422
+            "QUANTITY_INVALID",
+            "La quantitat ha de ser superior a 0",
+            422,
         )
 
     owner_user_id = data.owner_user_id
@@ -172,8 +176,6 @@ def create_manual_product(
     )
 
     db.add(product)
-
-    # Important per a la sincronització amb la llar
     home.updated_at = datetime.utcnow()
 
     db.commit()
@@ -194,6 +196,7 @@ def create_manual_product(
                 "is_private": product.owner_user_id is not None,
                 "name": product.name,
                 "category": product.category,
+                "category_label": CATEGORY_LABELS_CA[data.category],
                 "price": str(product.price),
                 "quantity": product.quantity,
                 "purchase_date": (
