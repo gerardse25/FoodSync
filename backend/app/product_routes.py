@@ -9,7 +9,11 @@ import app.models
 from app.database import get_db
 from app.home_models import Home, HomeMembership
 from app.product_models import Product
-from app.product_schemas import CreateManualProductSchema
+from app.product_schemas import (
+    CATEGORY_LABELS_CA,
+    CategoryOptionResponse,
+    CreateManualProductSchema,
+)
 from app.validation import contains_control_characters, contains_escape_sequences
 from app.barcode_service import is_valid_barcode, lookup_barcode
 
@@ -47,6 +51,15 @@ def _get_active_home(home_id, db: Session):
         .first()
     )
 
+@router.get("/categories", response_model=list[CategoryOptionResponse])
+def get_product_categories():
+    return [
+        {
+            "value": category.value,
+            "label": label,
+        }
+        for category, label in CATEGORY_LABELS_CA.items()
+    ]
 
 def _normalize_product_text(value: str | None, field_name: str, max_len: int):
     raw = value if value is not None else ""
