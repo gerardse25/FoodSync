@@ -12,6 +12,7 @@ Decisions tècniques:
   - La categoria es mapeja des del camp `categories` d'OFF, agafant
     el primer valor normalitzat. Si no n'hi ha, retorna "General".
 """
+from app.category_mapper import map_off_to_internal_category
 import base64
 import re
 
@@ -33,31 +34,45 @@ def is_valid_barcode(barcode: str) -> bool:
     return bool(BARCODE_REGEX.match(barcode.strip()))
 
 
+# def _extract_category(product_data: dict) -> str:
+#     """
+#     Extreu la primera categoria llegible d'OFF.
+#     OFF retorna categories com 'en:beverages,en:juices' o
+#     'Begudes,Sucs' depenent de l'idioma.
+#     """
+#     # Intentem el camp localitzat primer, després el genèric
+#     raw = (
+#         product_data.get("categories_tags")
+#         or product_data.get("categories", "")
+#     )
+
+#     if isinstance(raw, list) and raw:
+#         # Eliminem el prefix de llengua ('en:', 'ca:', etc.)
+#         first = raw[0]
+#         category = re.sub(r"^[a-z]{2}:", "", first)
+#         return category.strip().capitalize() or "General"
+
+#     if isinstance(raw, str) and raw:
+#         first = raw.split(",")[0]
+#         category = re.sub(r"^[a-z]{2}:", "", first)
+#         return category.strip().capitalize() or "General"
+
+#     return "General"
+
 def _extract_category(product_data: dict) -> str:
     """
-    Extreu la primera categoria llegible d'OFF.
-    OFF retorna categories com 'en:beverages,en:juices' o
-    'Begudes,Sucs' depenent de l'idioma.
+    Utilitza el mapejador per retornar una categoria vàlida del projecte.
     """
-    # Intentem el camp localitzat primer, després el genèric
-    raw = (
+    raw_tags = (
         product_data.get("categories_tags")
         or product_data.get("categories", "")
     )
-
-    if isinstance(raw, list) and raw:
-        # Eliminem el prefix de llengua ('en:', 'ca:', etc.)
-        first = raw[0]
-        category = re.sub(r"^[a-z]{2}:", "", first)
-        return category.strip().capitalize() or "General"
-
-    if isinstance(raw, str) and raw:
-        first = raw.split(",")[0]
-        category = re.sub(r"^[a-z]{2}:", "", first)
-        return category.strip().capitalize() or "General"
-
-    return "General"
-
+    
+    # Obtenim la categoria del nostre Enum
+    internal_cat = map_off_to_internal_category(raw_tags)
+    
+    # Retornem el valor (string) de l'Enum per a la resposta JSON
+    return internal_cat.value
 
 def lookup_barcode(barcode: str) -> dict | None:
     """
