@@ -31,7 +31,7 @@ def consume_product(
     if not membership:
         return JSONResponse(
             status_code=403,
-            content={"error": "Accés denegat: L'usuari no pertany a cap llar activa."},
+            content={"code": "NOT_IN_HOME", "error": "Accés denegat: L'usuari no pertany a cap llar activa."},
         )
 
     home_id = membership.home_id
@@ -41,7 +41,7 @@ def consume_product(
     except ValueError:
         return JSONResponse(
             status_code=400,
-            content={"detail": "L'ID del producte ha de ser numèric."},
+            content={"code": "PRODUCT_ID_INVALID", "detail": "L'ID del producte ha de ser numèric."},
         )
 
     inv_product = (
@@ -56,13 +56,14 @@ def consume_product(
     if not inv_product:
         return JSONResponse(
             status_code=404,
-            content={"detail": "Producte no trobat a l'inventari de la llar."},
+            content={"code": "PRODUCT_NOT_FOUND", "detail": "Producte no trobat a l'inventari de la llar."},
         )
 
     if inv_product.id_propietari_privat and inv_product.id_propietari_privat != user.id:
         return JSONResponse(
             status_code=403,
             content={
+                "code": "PRODUCT_MODIFICATION_FORBIDDEN",
                 "error": "No tens permís per modificar aquest producte perquè és privat d'un altre membre."
             },
         )
@@ -70,13 +71,22 @@ def consume_product(
     if inv_product.quantitat == 0 and data.modificacio < 0:
         return JSONResponse(
             status_code=400,
-            content={"error": "El producte ja està esgotat (quantitat 0)."},
+            content={"code": "PRODUCT_OUT_OF_STOCK", "error": "El producte ja està esgotat (quantitat 0)."},
         )
     elif inv_product.quantitat + data.modificacio < 0:
         return JSONResponse(
             status_code=400,
             content={
+                "code": "PRODUCT_INSUFFICIENT_STOCK",
                 "error": "No pots consumir més unitats de les que hi ha disponibles."
+            },
+        )
+    elif inv_product.quantitat + data.modificacio > 99:
+        return JSONResponse(
+            status_code=400,
+            content={
+                "code": "QUANTITY_TOO_HIGH",
+                "error": "La quantitat màxima permesa és 99."
             },
         )
 
@@ -109,6 +119,7 @@ def consume_product(
         msg = "La quantitat no s'ha modificat"
 
     return schemas.ConsumeProductResponse(
+        code="PRODUCT_QUANTITY_UPDATED",
         missatge=msg,
         producte=schemas.ConsumeProductResponseItem(
             id_producte=str(inv_product.id_inventari),

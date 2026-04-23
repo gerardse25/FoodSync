@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import Column, Date, DateTime, ForeignKey, Integer, String
+from sqlalchemy import Column, Date, DateTime, ForeignKey, Integer, String, CheckConstraint
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 
@@ -30,6 +30,10 @@ class CatalogProduct(Base):
 
 class InventoryProduct(Base):
     __tablename__ = "productes_inventari"
+
+    __table_args__ = (
+        CheckConstraint('quantitat >= 0 AND quantitat <= 99', name='check_quantitat_range'),
+    )
 
     id_inventari = Column(Integer, primary_key=True, index=True, autoincrement=True)
     id_llar = Column(UUID(as_uuid=True), ForeignKey("homes.id"), nullable=False)

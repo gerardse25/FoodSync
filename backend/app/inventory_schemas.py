@@ -13,5 +13,6 @@ class ConsumeProductResponseItem(BaseModel):
 
 
 class ConsumeProductResponse(BaseModel):
+    code: str
     missatge: str
     producte: ConsumeProductResponseItem
