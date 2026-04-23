@@ -106,6 +106,7 @@ const handleLogin = () => {
       [
         {
           text: "OK",
+          onPress: () => router.replace("/(tabs)/settings"),
         },
       ],
       { cancelable: false }
@@ -250,7 +251,7 @@ const handleLogin = () => {
           </View>
 
           {/* Enlace al Registro */}
-          <View className="mt-auto flex-row justify-center items-center pb-8">
+          <View className="mt-6 flex-row justify-center items-center pb-8">
             <Text className="text-gray-500">¿No tienes cuenta? </Text>
             <TouchableOpacity onPress={() => router.push("/(auth)/register")}>
               <Text className="text-emerald-500 font-bold">Regístrate</Text>
