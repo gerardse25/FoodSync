@@ -1,5 +1,6 @@
 import secrets
 import smtplib
+import uuid
 from datetime import datetime, timedelta
 from email.mime.text import MIMEText
 
@@ -29,19 +30,64 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 security = HTTPBearer()
 
 
+def _contains_control_characters(value: str) -> bool:
+    return any(ord(ch) < 32 or ord(ch) == 127 for ch in value)
+
+
+def _contains_escape_sequences(value: str) -> bool:
+    return "\\n" in value or "\\t" in value or "\\r" in value
+
+
+def _validate_text(value: str, field_name: str, min_len: int, max_len: int) -> str:
+    value = value.strip()
+
+    if not value:
+        raise ValueError(f"El camp {field_name} no pot estar buit")
+
+    if len(value) < min_len or len(value) > max_len:
+        raise ValueError(
+            f"El camp {field_name} ha de tenir entre {min_len} i {max_len} caràcters"
+        )
+
+    if _contains_control_characters(value):
+        raise ValueError(f"El camp {field_name} no pot contenir caràcters de control")
+
+    if _contains_escape_sequences(value):
+        raise ValueError(f"El camp {field_name} no pot contenir seqüències d'escape")
+
+    if any(ch.isspace() for ch in value):
+        raise ValueError(f"El camp {field_name} no pot contenir espais interns")
+
+    return value
+
+
 def normalize_email(email: str) -> str:
     email = email.strip().lower()
+
+    if not email:
+        raise ValueError("El correu no pot estar buit")
 
     if len(email) > 128:
         raise ValueError("El correu no pot superar els 128 caràcters")
 
+    if _contains_control_characters(email):
+        raise ValueError("El correu no pot contenir caràcters de control")
+
+    if _contains_escape_sequences(email):
+        raise ValueError("El correu no pot contenir seqüències d'escape")
+
     if any(ch.isspace() for ch in email):
         raise ValueError("El correu no pot contenir espais")
 
-    if any(ord(ch) < 32 for ch in email):
-        raise ValueError("El correu no pot contenir caràcters de control")
-
     return email
+
+
+def normalize_username(username: str) -> str:
+    return _validate_text(username, "nom d'usuari", 2, 16)
+
+
+def normalize_password(password: str) -> str:
+    return _validate_text(password, "contrasenya", 6, 32)
 
 
 def hash_password(password: str):
@@ -71,6 +117,13 @@ def decode_token(token: str):
     return jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
 
 
+def _parse_uuid(value: str, detail: str = "Sessió caducada") -> uuid.UUID:
+    try:
+        return uuid.UUID(str(value))
+    except (ValueError, TypeError, AttributeError) as err:
+        raise HTTPException(status_code=401, detail=detail) from err
+
+
 def get_current_user(
     credentials: HTTPAuthorizationCredentials = Depends(security),
     db: DBSession = Depends(get_db),
@@ -79,12 +132,15 @@ def get_current_user(
 
     try:
         payload = decode_token(token)
-        user_id = payload.get("sub")
-        session_id = payload.get("sid")
+        user_id_raw = payload.get("sub")
+        session_id_raw = payload.get("sid")
         token_type = payload.get("type")
 
-        if token_type != "access" or not user_id or not session_id:
+        if token_type != "access" or not user_id_raw or not session_id_raw:
             raise HTTPException(status_code=401, detail="No autoritzat")
+
+        user_id = _parse_uuid(user_id_raw, "Sessió caducada")
+        session_id = _parse_uuid(session_id_raw, "Sessió caducada")
 
     except JWTError as err:
         raise HTTPException(status_code=401, detail="Sessió caducada") from err
