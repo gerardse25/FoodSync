@@ -30,8 +30,8 @@ def delete_product(
 
     if not membership:
         return JSONResponse(
-            status_code=403,
-            content={"error": "Accés denegat: L'usuari no pertany a cap llar activa."},
+            status_code=404,
+            content={"code": "NOT_IN_HOME", "error": "Accés denegat: L'usuari no pertany a cap llar activa."},
         )
 
     home_id = membership.home_id
@@ -41,7 +41,7 @@ def delete_product(
     except ValueError:
         return JSONResponse(
             status_code=400,
-            content={"detail": "L'ID del producte ha de ser numèric."},
+            content={"code": "PRODUCT_ID_INVALID", "detail": "L'ID del producte ha de ser numèric."},
         )
 
     inv_product = (
@@ -56,13 +56,14 @@ def delete_product(
     if not inv_product:
         return JSONResponse(
             status_code=404,
-            content={"error": "El producte no s'ha trobat."},
+            content={"code": "PRODUCT_NOT_FOUND", "error": "El producte no s'ha trobat."},
         )
 
     if inv_product.id_propietari_privat and inv_product.id_propietari_privat != user.id:
         return JSONResponse(
             status_code=403,
             content={
+                "code": "PRODUCT_DELETE_FORBIDDEN",
                 "error": "No tens permís per eliminar aquest producte perquè és privat d'un altre membre."
             },
         )
@@ -71,5 +72,6 @@ def delete_product(
     db.commit()
 
     return schemas.DeleteProductResponse(
+        code="PRODUCT_DELETED",
         missatge="El producte s'ha eliminat completament de l'inventari."
     )

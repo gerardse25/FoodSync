@@ -6,4 +6,5 @@ class DeleteProductRequest(BaseModel):
 
 
 class DeleteProductResponse(BaseModel):
+    code: str
     missatge: str
