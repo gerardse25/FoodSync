@@ -2,7 +2,6 @@ from typing import Optional
 
 from fastapi import APIRouter, Depends, Query
 from fastapi.responses import JSONResponse
-from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
 import app.auth
@@ -11,8 +10,7 @@ from app.database import get_db
 from app.home_models import HomeMembership
 from app.inventory_models import CatalogProduct, Category, InventoryProduct
 from app.models import User
-
-router = APIRouter(prefix="/backend/app/inventory_routes", tags=["inventory"])
+router = APIRouter(prefix="/inventory", tags=["inventory"])
 
 
 @router.get("", response_model=schemas.InventoryResponseSchema)
@@ -35,7 +33,7 @@ def get_inventory(
     if not membership:
         return JSONResponse(
             status_code=403,
-            content={"error": "Accés denegat: L'usuari no pertany a cap llar activa."},
+            content={"code": "NOT_IN_HOME", "error": "Accés denegat: L'usuari no pertany a cap llar activa."},
         )
 
     home_id = membership.home_id
@@ -56,14 +54,11 @@ def get_inventory(
         )
         .filter(
             InventoryProduct.id_llar == home_id,
-            or_(
-                InventoryProduct.id_propietari_privat.is_(None),
-                InventoryProduct.id_propietari_privat == user.id,
-            ),
         )
     )
 
     if nom:
+        nom = nom.strip()
         query = query.filter(CatalogProduct.nom.ilike(f"%{nom}%"))
 
     results = query.all()

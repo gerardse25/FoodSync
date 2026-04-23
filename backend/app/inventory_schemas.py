@@ -24,5 +24,6 @@ class InventoryProductSchema(BaseModel):
 
 
 class InventoryResponseSchema(BaseModel):
+    code: str = "INVENTORY_RETRIEVED"
     missatge: str
     productes: List[InventoryProductSchema]
