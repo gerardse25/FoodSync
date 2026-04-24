@@ -36,7 +36,7 @@ def delete_product(
             status_code=404,
             content={
                 "code": "NOT_IN_HOME",
-                "error": "Accés denegat: L'usuari no pertany a cap llar activa."
+                "error": "Accés denegat: L'usuari no pertany a cap llar activa.",
             },
         )
 
@@ -49,8 +49,8 @@ def delete_product(
         return JSONResponse(
             status_code=400,
             content={
-            "code": "PRODUCT_ID_INVALID",
-            "detail": "L'ID del producte ha de ser numèric."
+                "code": "PRODUCT_ID_INVALID",
+                "detail": "L'ID del producte ha de ser numèric.",
             },
         )
 
@@ -68,7 +68,7 @@ def delete_product(
             status_code=404,
             content={
                 "code": "PRODUCT_NOT_FOUND",
-                "error": "El producte no s'ha trobat."
+                "error": "El producte no s'ha trobat.",
             },
         )
 
@@ -79,7 +79,8 @@ def delete_product(
             status_code=403,
             content={
                 "code": "PRODUCT_DELETE_FORBIDDEN",
-                "error": "No tens permís per eliminar aquest producte perquè és privat d'un altre membre."
+                "error": "No tens permís per eliminar aquest producte "
+                "perquè és privat d'un altre membre.",
             },
         )
 
@@ -92,5 +93,5 @@ def delete_product(
 
     return schemas.DeleteProductResponse(
         code="PRODUCT_DELETED",
-        missatge="El producte s'ha eliminat completament de l'inventari."
+        missatge="El producte s'ha eliminat completament de l'inventari.",
     )

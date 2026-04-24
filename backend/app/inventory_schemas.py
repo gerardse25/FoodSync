@@ -19,6 +19,7 @@ class ProductOwnerSchema(BaseModel):
 # INVENTARI - LLISTAT
 # =========================
 
+
 class InventoryProductSchema(BaseModel):
     id_producte: str
     nom: str
@@ -40,6 +41,7 @@ class InventoryResponseSchema(BaseModel):
 # =========================
 # INVENTARI - DETALL
 # =========================
+
 
 class InventoryNutritionSchema(BaseModel):
     energy_kcal: Optional[float] = None
@@ -93,6 +95,7 @@ class InventoryProductDetailResponseSchema(BaseModel):
 # CREAR PRODUCTE MANUAL
 # =========================
 
+
 class CreateInventoryManualProductRequest(BaseModel):
     nom: Optional[str] = None
     categoria: Optional[ProductCategory] = None
@@ -126,9 +129,10 @@ class CreateInventoryProductResponse(BaseModel):
 # LOOKUP BARCODE
 # =========================
 
+
 class BarcodeLookupProductSchema(BaseModel):
     nom: Optional[str] = None
-    categoria: Optional[str] = None   # enum value, ex: BREAKFAST_CEREALS
+    categoria: Optional[str] = None  # enum value, ex: BREAKFAST_CEREALS
     marca: Optional[str] = None
     quantitat_envas: Optional[str] = None
     nutriscore: Optional[str] = None
@@ -148,6 +152,7 @@ class BarcodeLookupResponseSchema(BaseModel):
 # CONFIRMAR BARCODE
 # =========================
 
+
 class ConfirmBarcodeProductRequest(BaseModel):
     barcode: str
     nom: Optional[str] = None
@@ -162,6 +167,7 @@ class ConfirmBarcodeProductRequest(BaseModel):
 # =========================
 # MODIFICAR / ELIMINAR
 # =========================
+
 
 class ConsumeProductRequest(BaseModel):
     id_producte: str
@@ -188,9 +194,11 @@ class DeleteProductResponse(BaseModel):
     code: str
     missatge: str
 
+
 class UpdateProductOwnersRequest(BaseModel):
     id_producte: str
     owner_user_ids: List[UUID]
+
 
 class UpdateProductOwnersResponse(BaseModel):
     code: str
