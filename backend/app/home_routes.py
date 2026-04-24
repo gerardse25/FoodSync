@@ -34,6 +34,7 @@ from app.home_schemas import (
     KickMemberSchema,
     MemberResponse,
 )
+from app.product_models import Product
 
 router = APIRouter(prefix="/home", tags=["home"])
 
@@ -542,6 +543,15 @@ def leave_home(
             home.owner_id = new_owner_membership.user_id
             home.updated_at = now
 
+            db.query(Product).filter(
+                Product.home_id == home.id,
+                Product.owner_user_id == user.id,
+                Product.is_active,
+            ).update(
+                {"owner_user_id": None},
+                synchronize_session=False,
+            )
+
             db.commit()
 
             return JSONResponse(
@@ -560,6 +570,15 @@ def leave_home(
             home.is_active = False
             home.updated_at = now
 
+            db.query(Product).filter(
+                Product.home_id == home.id,
+                Product.owner_user_id == user.id,
+                Product.is_active,
+            ).update(
+                {"owner_user_id": None},
+                synchronize_session=False,
+            )
+
             db.commit()
 
             return JSONResponse(
@@ -574,6 +593,16 @@ def leave_home(
     membership.is_active = False
     membership.left_at = now
     home.updated_at = now
+
+    db.query(Product).filter(
+        Product.home_id == home.id,
+        Product.owner_user_id == user.id,
+        Product.is_active,
+    ).update(
+        {"owner_user_id": None},
+        synchronize_session=False,
+    )
+
     db.commit()
     db.expire_all()
 
@@ -655,6 +684,16 @@ def kick_member(
     target_membership.is_active = False
     target_membership.left_at = now
     home.updated_at = now
+
+    db.query(Product).filter(
+        Product.home_id == home.id,
+        Product.owner_user_id == data.user_id,
+        Product.is_active,
+    ).update(
+        {"owner_user_id": None},
+        synchronize_session=False,
+    )
+
     db.commit()
 
     kicked_user = (
