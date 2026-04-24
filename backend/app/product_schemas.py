@@ -1,10 +1,4 @@
-from datetime import date
-from decimal import Decimal
 from enum import Enum
-from typing import Optional
-from uuid import UUID
-
-from pydantic import BaseModel
 
 
 class ProductCategory(str, Enum):
@@ -150,34 +144,3 @@ CATEGORY_LABELS_CA = {
     ProductCategory.BABY_DESSERTS_AND_SNACKS: "Postres i snacks infantils",
     ProductCategory.OTHER: "Altres",
 }
-
-
-class CreateManualProductSchema(BaseModel):
-    name: Optional[str] = None
-    price: Optional[Decimal] = None
-    category: Optional[ProductCategory] = None
-    quantity: Optional[int] = None
-    purchase_date: Optional[date] = None
-    expiration_date: Optional[date] = None
-    owner_user_id: Optional[UUID] = None
-
-
-class ProductResponse(BaseModel):
-    id: str
-    home_id: str
-    created_by_user_id: str
-    owner_user_id: Optional[str]
-    is_private: bool
-    name: str
-    category: str
-    category_label: str
-    quantity: int
-    price: str
-    purchase_date: Optional[str]
-    expiration_date: Optional[str]
-    created_at: str
-
-
-class CategoryOptionResponse(BaseModel):
-    value: str
-    label: str
