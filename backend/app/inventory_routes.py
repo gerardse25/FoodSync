@@ -3,7 +3,6 @@ from typing import Optional
 
 from fastapi import APIRouter, Depends, Query
 from fastapi.responses import JSONResponse
-from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
 import app.auth
@@ -11,15 +10,21 @@ import app.inventory_schemas as schemas
 from app.barcode_service import is_valid_barcode, lookup_barcode_enriched
 from app.database import get_db
 from app.home_models import Home, HomeMembership
-from app.inventory_models import CatalogProduct, Category, InventoryProduct, InventoryProductOwner
+from app.inventory_models import (
+    CatalogProduct,
+    Category,
+    InventoryProduct,
+    InventoryProductOwner,
+)
 from app.models import User
 from app.product_schemas import CATEGORY_LABELS_CA, ProductCategory
 from app.validation import contains_control_characters, contains_escape_sequences
 
-
 router = APIRouter(prefix="/inventory", tags=["inventory"])
 
-LABEL_TO_CATEGORY_VALUE = {label: category.value for category, label in CATEGORY_LABELS_CA.items()}
+LABEL_TO_CATEGORY_VALUE = {
+    label: category.value for category, label in CATEGORY_LABELS_CA.items()
+}
 
 
 def _json_error(detail: str, status_code: int = 400, code: Optional[str] = None):
@@ -55,7 +60,9 @@ def _normalize_product_name(value: str | None):
     raw = value if value is not None else ""
 
     if contains_control_characters(raw) or contains_escape_sequences(raw):
-        return None, _json_error("El camp nom conté caràcters no permesos.", 400, "NAME_INVALID_CHARACTERS")
+        return None, _json_error(
+            "El camp nom conté caràcters no permesos.", 400, "NAME_INVALID_CHARACTERS"
+        )
 
     trimmed = raw.strip()
 
@@ -79,13 +86,19 @@ def _validate_price_quantity(price, quantity):
         return _json_error("El preu no pot ser negatiu.", 422, "PRICE_INVALID")
 
     if price != round(price, 2):
-        return _json_error("El preu no pot tenir més de 2 decimals.", 422, "PRICE_INVALID")
+        return _json_error(
+            "El preu no pot tenir més de 2 decimals.", 422, "PRICE_INVALID"
+        )
 
     if quantity <= 0:
-        return _json_error("La quantitat ha de ser superior a 0.", 422, "QUANTITY_INVALID")
+        return _json_error(
+            "La quantitat ha de ser superior a 0.", 422, "QUANTITY_INVALID"
+        )
 
     if quantity > 99:
-        return _json_error("La quantitat màxima permesa és 99.", 422, "QUANTITY_TOO_HIGH")
+        return _json_error(
+            "La quantitat màxima permesa és 99.", 422, "QUANTITY_TOO_HIGH"
+        )
 
     return None
 
@@ -114,7 +127,9 @@ def _validate_owner(home_id, owner_user_id, db: Session):
     return None
 
 
-def _get_or_create_category_row(category_enum: ProductCategory, db: Session) -> Category:
+def _get_or_create_category_row(
+    category_enum: ProductCategory, db: Session
+) -> Category:
     label = CATEGORY_LABELS_CA[category_enum]
 
     category_row = db.query(Category).filter(Category.nom == label).first()
@@ -127,7 +142,9 @@ def _get_or_create_category_row(category_enum: ProductCategory, db: Session) -> 
     return category_row
 
 
-def _apply_off_snapshot_to_catalog_product(catalog_product: CatalogProduct, off_data: dict) -> None:
+def _apply_off_snapshot_to_catalog_product(
+    catalog_product: CatalogProduct, off_data: dict
+) -> None:
     if not catalog_product.marca:
         catalog_product.marca = off_data.get("brand")
 
@@ -154,7 +171,9 @@ def _apply_off_snapshot_to_catalog_product(catalog_product: CatalogProduct, off_
 
 @router.get("", response_model=schemas.InventoryResponseSchema)
 def get_inventory(
-    nom: Optional[str] = Query(None, description="Terme de cerca per filtrar l'inventari"),
+    nom: Optional[str] = Query(
+        None, description="Terme de cerca per filtrar l'inventari"
+    ),
     categoria: Optional[str] = Query(None, description="Filtre per categoria"),
     current=Depends(app.auth.get_current_user),
     db: Session = Depends(get_db),
@@ -167,7 +186,7 @@ def get_inventory(
             status_code=403,
             content={
                 "code": "NOT_IN_HOME",
-                "error": "Accés denegat: L'usuari no pertany a cap llar activa."
+                "error": "Accés denegat: L'usuari no pertany a cap llar activa.",
             },
         )
 
@@ -194,7 +213,7 @@ def get_inventory(
 
     if categoria:
         query = query.filter(Category.nom == categoria)
-    
+
     results = query.all()
 
     productes = []
@@ -213,11 +232,12 @@ def get_inventory(
                 propietaris=owners_data,
             )
         )
-        
+
     return schemas.InventoryResponseSchema(
         missatge="Inventari obtingut correctament",
         productes=productes,
     )
+
 
 @router.get("/categories")
 def get_inventory_categories(
@@ -233,13 +253,13 @@ def get_inventory_categories(
 
     return {
         "missatge": "Categories obtingudes correctament",
-        "categories": [
-            {"id": c.id_categoria, "nom": c.nom}
-            for c in categories
-        ],
+        "categories": [{"id": c.id_categoria, "nom": c.nom} for c in categories],
     }
 
-@router.get("/{id_producte}", response_model=schemas.InventoryProductDetailResponseSchema)
+
+@router.get(
+    "/{id_producte}", response_model=schemas.InventoryProductDetailResponseSchema
+)
 def get_inventory_product_detail(
     id_producte: int,
     current=Depends(app.auth.get_current_user),
@@ -253,7 +273,7 @@ def get_inventory_product_detail(
             status_code=403,
             content={
                 "code": "NOT_IN_HOME",
-                "error": "Accés denegat: L'usuari no pertany a cap llar activa."
+                "error": "Accés denegat: L'usuari no pertany a cap llar activa.",
             },
         )
 
@@ -316,7 +336,9 @@ def get_inventory_product_detail(
     )
 
 
-@router.post("/manual", response_model=schemas.CreateInventoryProductResponse, status_code=201)
+@router.post(
+    "/manual", response_model=schemas.CreateInventoryProductResponse, status_code=201
+)
 def create_inventory_product_manual(
     data: schemas.CreateInventoryManualProductRequest,
     current=Depends(app.auth.get_current_user),
@@ -330,7 +352,9 @@ def create_inventory_product_manual(
 
     home = _get_active_home(membership.home_id, db)
     if not home:
-        return _json_error("La llar no existeix o ha estat dissolta.", 404, "HOME_NOT_FOUND")
+        return _json_error(
+            "La llar no existeix o ha estat dissolta.", 404, "HOME_NOT_FOUND"
+        )
 
     name, error = _normalize_product_name(data.nom)
     if error:
@@ -343,7 +367,9 @@ def create_inventory_product_manual(
     if validation_error:
         return validation_error
 
-    owner_ids, owner_error = _validate_owner_list(home.id, data.id_propietaris_privats, db)
+    owner_ids, owner_error = _validate_owner_list(
+        home.id, data.id_propietaris_privats, db
+    )
     if owner_error:
         return owner_error
 
@@ -393,7 +419,11 @@ def create_inventory_product_manual(
             nom=catalog_product.nom,
             quantitat=inventory_product.quantitat,
             categoria=category_row.nom,
-            preu=str(inventory_product.preu) if inventory_product.preu is not None else None,
+            preu=(
+                str(inventory_product.preu)
+                if inventory_product.preu is not None
+                else None
+            ),
             data_compra=inventory_product.data_compra,
             data_caducitat=inventory_product.data_caducitat,
             codi_barres=catalog_product.codi_barres,
@@ -488,7 +518,11 @@ def lookup_inventory_product_by_barcode(
     )
 
 
-@router.post("/barcode/confirm", response_model=schemas.CreateInventoryProductResponse, status_code=201)
+@router.post(
+    "/barcode/confirm",
+    response_model=schemas.CreateInventoryProductResponse,
+    status_code=201,
+)
 def confirm_and_add_barcode_product(
     data: schemas.ConfirmBarcodeProductRequest,
     current=Depends(app.auth.get_current_user),
@@ -502,7 +536,9 @@ def confirm_and_add_barcode_product(
 
     home = _get_active_home(membership.home_id, db)
     if not home:
-        return _json_error("La llar no existeix o ha estat dissolta.", 404, "HOME_NOT_FOUND")
+        return _json_error(
+            "La llar no existeix o ha estat dissolta.", 404, "HOME_NOT_FOUND"
+        )
 
     barcode = data.barcode.strip()
     if not is_valid_barcode(barcode):
@@ -516,14 +552,14 @@ def confirm_and_add_barcode_product(
     if validation_error:
         return validation_error
 
-    owner_ids, owner_error = _validate_owner_list(home.id, data.id_propietaris_privats, db)
+    owner_ids, owner_error = _validate_owner_list(
+        home.id, data.id_propietaris_privats, db
+    )
     if owner_error:
         return owner_error
 
     catalog_product = (
-        db.query(CatalogProduct)
-        .filter(CatalogProduct.codi_barres == barcode)
-        .first()
+        db.query(CatalogProduct).filter(CatalogProduct.codi_barres == barcode).first()
     )
 
     off_data = None
@@ -567,7 +603,12 @@ def confirm_and_add_barcode_product(
                         resolved_category = enum_value
                         break
 
-        if resolved_category is None and off_data and off_data.get("found") and off_data.get("category"):
+        if (
+            resolved_category is None
+            and off_data
+            and off_data.get("found")
+            and off_data.get("category")
+        ):
             off_category_value = off_data.get("category")
             try:
                 resolved_category = ProductCategory(off_category_value)
@@ -640,13 +681,18 @@ def confirm_and_add_barcode_product(
             nom=catalog_product.nom,
             quantitat=inventory_product.quantitat,
             categoria=category_row.nom,
-            preu=str(inventory_product.preu) if inventory_product.preu is not None else None,
+            preu=(
+                str(inventory_product.preu)
+                if inventory_product.preu is not None
+                else None
+            ),
             data_compra=inventory_product.data_compra,
             data_caducitat=inventory_product.data_caducitat,
             codi_barres=catalog_product.codi_barres,
             metode_registre=inventory_product.metode_registre,
         ),
     )
+
 
 @router.patch("/owners", response_model=schemas.UpdateProductOwnersResponse)
 def update_product_owners(
@@ -665,7 +711,10 @@ def update_product_owners(
     except ValueError:
         return JSONResponse(
             status_code=400,
-            content={"code": "PRODUCT_ID_INVALID", "detail": "L'ID del producte ha de ser numèric."},
+            content={
+                "code": "PRODUCT_ID_INVALID",
+                "detail": "L'ID del producte ha de ser numèric.",
+            },
         )
 
     inv_product = (
@@ -680,7 +729,10 @@ def update_product_owners(
     if not inv_product:
         return JSONResponse(
             status_code=404,
-            content={"code": "PRODUCT_NOT_FOUND", "error": "El producte no s'ha trobat."},
+            content={
+                "code": "PRODUCT_NOT_FOUND",
+                "error": "El producte no s'ha trobat.",
+            },
         )
 
     current_owner_ids = _get_owner_ids(product_id, db)
@@ -693,7 +745,7 @@ def update_product_owners(
             status_code=403,
             content={
                 "code": "PRODUCT_OWNERSHIP_FORBIDDEN",
-                "error": "No tens permís per modificar la propietat d'aquest producte."
+                "error": "No tens permís per modificar la propietat d'aquest producte.",
             },
         )
 
@@ -730,6 +782,7 @@ def update_product_owners(
         es_privat=len(owners_data) > 0,
         propietaris=owners_data,
     )
+
 
 def _get_product_owner_rows(product_id: int, db: Session):
     return (

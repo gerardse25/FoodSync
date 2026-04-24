@@ -88,7 +88,6 @@ EXACT_TAG_MAP: dict[str, ProductCategory] = {
     "plant-based-drinks": ProductCategory.PLANT_BASED_DRINKS,
     "soy-milks": ProductCategory.PLANT_BASED_DRINKS,
     "almond-milks": ProductCategory.PLANT_BASED_DRINKS,
-
     # ALCOHOL
     "beers": ProductCategory.BEER,
     "beer": ProductCategory.BEER,
@@ -98,7 +97,6 @@ EXACT_TAG_MAP: dict[str, ProductCategory] = {
     "spirits": ProductCategory.SPIRITS,
     "liqueurs": ProductCategory.SPIRITS,
     "cocktails": ProductCategory.PREMIXED_ALCOHOLIC_DRINKS,
-
     # LACTIS
     "milk": ProductCategory.MILK,
     "milks": ProductCategory.MILK,
@@ -114,7 +112,6 @@ EXACT_TAG_MAP: dict[str, ProductCategory] = {
     "processed-cheeses": ProductCategory.PROCESSED_CHEESE,
     "hard-cheeses": ProductCategory.HARD_CHEESE,
     "cheeses": ProductCategory.HARD_CHEESE,
-
     # CARN / PEIX / OUS
     "eggs": ProductCategory.EGGS,
     "poultries": ProductCategory.POULTRY,
@@ -137,7 +134,6 @@ EXACT_TAG_MAP: dict[str, ProductCategory] = {
     "seafood": ProductCategory.SEAFOOD,
     "crustaceans": ProductCategory.SEAFOOD,
     "molluscs": ProductCategory.SEAFOOD,
-
     # FRUITA / VERDURA / LLEGUMS
     "fresh-fruits": ProductCategory.FRESH_FRUIT,
     "fruits": ProductCategory.FRESH_FRUIT,
@@ -150,7 +146,6 @@ EXACT_TAG_MAP: dict[str, ProductCategory] = {
     "fresh-soups": ProductCategory.FRESH_SOUPS,
     "soups": ProductCategory.FRESH_SOUPS,
     "dehydrated-soups": ProductCategory.DEHYDRATED_SOUPS,
-
     # CEREALS / FARINACIS
     "breakfast-cereals": ProductCategory.BREAKFAST_CEREALS,
     "mueslis": ProductCategory.BREAKFAST_CEREALS,
@@ -163,7 +158,6 @@ EXACT_TAG_MAP: dict[str, ProductCategory] = {
     "potatoes": ProductCategory.POTATOES,
     "breads": ProductCategory.BREAD,
     "bread": ProductCategory.BREAD,
-
     # DOLÇOS / SNACKS
     "dark-chocolates": ProductCategory.DARK_CHOCOLATE,
     "milk-chocolates": ProductCategory.MILK_CHOCOLATE,
@@ -180,7 +174,6 @@ EXACT_TAG_MAP: dict[str, ProductCategory] = {
     "salty-snacks": ProductCategory.SALTY_SNACKS,
     "chips": ProductCategory.SALTY_SNACKS,
     "crisps": ProductCategory.SALTY_SNACKS,
-
     # GREIXOS / SALSES
     "animal-fats": ProductCategory.ANIMAL_FATS,
     "lards": ProductCategory.ANIMAL_FATS,
@@ -192,14 +185,12 @@ EXACT_TAG_MAP: dict[str, ProductCategory] = {
     "sauces": ProductCategory.SAUCES,
     "ketchups": ProductCategory.SAUCES,
     "mayonnaises": ProductCategory.SAUCES,
-
     # PREPARATS
     "pizzas": ProductCategory.PIZZA_QUICHE,
     "quiches": ProductCategory.PIZZA_QUICHE,
     "sandwiches": ProductCategory.SANDWICHES,
     "ready-meals": ProductCategory.READY_MEALS,
     "prepared-dishes": ProductCategory.READY_MEALS,
-
     # INFANTIL
     "baby-foods": ProductCategory.BABY_FOODS,
     "baby-milks": ProductCategory.BABY_MILKS,
@@ -217,31 +208,25 @@ VARIANT_KEYWORDS: list[tuple[str, ProductCategory]] = [
     ("corn-flakes", ProductCategory.BREAKFAST_CEREALS),
     ("breakfast-cereal", ProductCategory.BREAKFAST_CEREALS),
     ("muesli", ProductCategory.BREAKFAST_CEREALS),
-
     ("dark-chocolate", ProductCategory.DARK_CHOCOLATE),
     ("milk-chocolate", ProductCategory.MILK_CHOCOLATE),
     ("white-chocolate", ProductCategory.WHITE_CHOCOLATE),
-
     ("sugar-free-soft-drink", ProductCategory.ARTIFICIALLY_SWEETENED_BEVERAGES),
     ("diet-soda", ProductCategory.ARTIFICIALLY_SWEETENED_BEVERAGES),
     ("energy-drink", ProductCategory.SWEETENED_BEVERAGES),
     ("soft-drink", ProductCategory.SWEETENED_BEVERAGES),
-
     ("fresh-cheese", ProductCategory.FRESH_CHEESE),
     ("soft-cheese", ProductCategory.SOFT_CHEESE),
     ("blue-cheese", ProductCategory.BLUE_CHEESE),
     ("processed-cheese", ProductCategory.PROCESSED_CHEESE),
     ("hard-cheese", ProductCategory.HARD_CHEESE),
-
     ("fatty-fish", ProductCategory.FATTY_FISH),
     ("lean-fish", ProductCategory.LEAN_FISH),
     ("white-fish", ProductCategory.LEAN_FISH),
     ("smoked-fish", ProductCategory.SMOKED_FISH),
-
     ("plant-based-beverage", ProductCategory.PLANT_BASED_DRINKS),
     ("soy-milk", ProductCategory.PLANT_BASED_DRINKS),
     ("almond-milk", ProductCategory.PLANT_BASED_DRINKS),
-
     ("fruit-juice", ProductCategory.FRUIT_JUICES),
     ("fruit-nectar", ProductCategory.FRUIT_NECTARS),
     ("herbal-tea", ProductCategory.COFFEE_TEA_HERBAL_TEA),
@@ -264,31 +249,24 @@ SAFE_KEYWORDS: list[tuple[str, ProductCategory]] = [
     ("yogurt", ProductCategory.YOGURT_AND_FERMENTED_MILK),
     ("yoghurt", ProductCategory.YOGURT_AND_FERMENTED_MILK),
     ("kefir", ProductCategory.YOGURT_AND_FERMENTED_MILK),
-
     ("sausage", ProductCategory.PROCESSED_MEAT),
     ("salami", ProductCategory.PROCESSED_MEAT),
     ("ham", ProductCategory.PROCESSED_MEAT),
-
     ("salmon", ProductCategory.FATTY_FISH),
     ("tuna", ProductCategory.FATTY_FISH),
-
     ("lentil", ProductCategory.LEGUMES),
     ("bean", ProductCategory.LEGUMES),
-
     ("bread", ProductCategory.BREAD),
     ("pasta", ProductCategory.PASTA),
     ("noodle", ProductCategory.PASTA),
     ("rice", ProductCategory.RICE),
     ("potato", ProductCategory.POTATOES),
-
     ("pizza", ProductCategory.PIZZA_QUICHE),
     ("quiche", ProductCategory.PIZZA_QUICHE),
     ("sandwich", ProductCategory.SANDWICHES),
-
     ("coffee", ProductCategory.COFFEE_TEA_HERBAL_TEA),
     ("tea", ProductCategory.COFFEE_TEA_HERBAL_TEA),
     ("infusion", ProductCategory.COFFEE_TEA_HERBAL_TEA),
-
     ("beer", ProductCategory.BEER),
     ("wine", ProductCategory.FERMENTED_ALCOHOLIC_DRINKS),
     ("cider", ProductCategory.FERMENTED_ALCOHOLIC_DRINKS),

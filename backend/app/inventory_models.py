@@ -1,10 +1,20 @@
-import uuid
 from datetime import datetime
 
-from sqlalchemy import Column, Date, DateTime, ForeignKey, Integer, Numeric, String, Text, JSON, CheckConstraint
+from sqlalchemy import (
+    JSON,
+    CheckConstraint,
+    Column,
+    Date,
+    DateTime,
+    ForeignKey,
+    Integer,
+    Numeric,
+    String,
+    Text,
+    UniqueConstraint,
+)
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
-from sqlalchemy import UniqueConstraint
 
 from app.database import Base
 
@@ -19,7 +29,9 @@ class Category(Base):
 class CatalogProduct(Base):
     __tablename__ = "productes_cataleg"
 
-    id_producte_cataleg = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    id_producte_cataleg = Column(
+        Integer, primary_key=True, index=True, autoincrement=True
+    )
     codi_barres = Column(String(50), unique=True, nullable=True, index=True)
     nom = Column(String(100), nullable=False)
     marca = Column(String(100), nullable=True)
@@ -27,7 +39,7 @@ class CatalogProduct(Base):
     imatge_url = Column(String(255), nullable=True)
 
     # Snapshot local d'Open Food Facts
-    quantitat_envas = Column(String(64), nullable=True)      # ex: "200 g", "1 L"
+    quantitat_envas = Column(String(64), nullable=True)  # ex: "200 g", "1 L"
     ingredients_text = Column(Text, nullable=True)
     allergens_text = Column(Text, nullable=True)
     nutriscore_grade = Column(String(1), nullable=True)
@@ -41,12 +53,16 @@ class InventoryProduct(Base):
     __tablename__ = "productes_inventari"
 
     __table_args__ = (
-    CheckConstraint("quantitat >= 0 AND quantitat <= 99", name="check_quantitat_range"),
+        CheckConstraint(
+            "quantitat >= 0 AND quantitat <= 99", name="check_quantitat_range"
+        ),
     )
 
     id_inventari = Column(Integer, primary_key=True, index=True, autoincrement=True)
     id_llar = Column(UUID(as_uuid=True), ForeignKey("homes.id"), nullable=False)
-    id_producte_cataleg = Column(Integer, ForeignKey("productes_cataleg.id_producte_cataleg"), nullable=False)
+    id_producte_cataleg = Column(
+        Integer, ForeignKey("productes_cataleg.id_producte_cataleg"), nullable=False
+    )
 
     quantitat = Column(Integer, default=1, nullable=False)
     data_caducitat = Column(Date, nullable=True)
@@ -54,7 +70,9 @@ class InventoryProduct(Base):
     # Camps propis de la compra / llar
     preu = Column(Numeric(10, 2), nullable=True)
     data_compra = Column(Date, nullable=True)
-    metode_registre = Column(String(16), nullable=False, default="manual")  # manual|barcode|receipt
+    metode_registre = Column(
+        String(16), nullable=False, default="manual"
+    )  # manual|barcode|receipt
 
     data_registre = Column(DateTime, default=datetime.utcnow)
 
@@ -64,6 +82,7 @@ class InventoryProduct(Base):
         back_populates="producte_inventari",
         cascade="all, delete-orphan",
     )
+
 
 class InventoryProductOwner(Base):
     __tablename__ = "productes_inventari_propietaris"

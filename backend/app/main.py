@@ -27,6 +27,7 @@ app.include_router(inventory_delete_router)
 # Els fitxers product_* els pots conservar temporalment al repo,
 # però ja no són el flux principal.
 
+
 @app.exception_handler(HTTPException)
 async def custom_http_exception_handler(request: Request, exc: HTTPException):
     if isinstance(exc.detail, dict) and "code" in exc.detail:

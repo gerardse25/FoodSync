@@ -1,8 +1,9 @@
-from app.category_mapper import map_off_to_internal_category
 import base64
 import re
 
 import requests
+
+from app.category_mapper import map_off_to_internal_category
 
 OFF_BASE_URL = "https://es.openfoodfacts.net"
 OFF_API_URL = OFF_BASE_URL + "/api/v2/product/{barcode}.json"
@@ -32,6 +33,7 @@ def _extract_category(product_data: dict) -> str:
     internal_cat = map_off_to_internal_category(raw_tags)
     return internal_cat.value
 
+
 def _extract_ingredients(product_data: dict) -> str | None:
     return (
         _clean_text(product_data.get("ingredients_text_es"))
@@ -39,6 +41,7 @@ def _extract_ingredients(product_data: dict) -> str | None:
         or _clean_text(product_data.get("ingredients_text_en"))
         or _clean_text(product_data.get("ingredients_text_ca"))
     )
+
 
 ALLERGEN_TAGS_ES = {
     "milk": "leche",
@@ -61,6 +64,7 @@ ALLERGEN_TAGS_ES = {
     "sulfites": "sulfitos",
     "lupin": "altramuces",
 }
+
 
 def _extract_allergens(product_data: dict) -> str | None:
     tags = (
@@ -161,6 +165,7 @@ def _fetch_off_product(barcode: str) -> dict | None:
         "product_data": data.get("product", {}) or {},
     }
 
+
 def lookup_barcode(barcode: str) -> dict | None:
     """
     Lookup ràpid per autocompletar.
@@ -177,7 +182,9 @@ def lookup_barcode(barcode: str) -> dict | None:
         or product_data.get("product_name_es")
         or None
     )
-    image_url = product_data.get("image_front_url") or product_data.get("image_url") or None
+    image_url = (
+        product_data.get("image_front_url") or product_data.get("image_url") or None
+    )
 
     return {
         "found": True,
@@ -209,7 +216,9 @@ def lookup_barcode_enriched(barcode: str) -> dict | None:
     if nutriscore:
         nutriscore = nutriscore.upper()
 
-    image_url = product_data.get("image_front_url") or product_data.get("image_url") or None
+    image_url = (
+        product_data.get("image_front_url") or product_data.get("image_url") or None
+    )
 
     return {
         "found": True,
