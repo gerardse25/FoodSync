@@ -1,3 +1,6 @@
+import pytest
+
+
 def test_delete_account_without_home_has_no_home_side_effects(client, registered_user):
     delete_response = client.delete("/auth/delete", headers=registered_user["headers"])
 
@@ -58,3 +61,66 @@ def test_delete_account_of_shared_home_owner_transfers_ownership_to_oldest_membe
     oldest_body = oldest_view.json()
     roles = {member["username"]: member["role"] for member in oldest_body["members"]}
     assert roles[shared_home_owner_setup["oldest_member"]["username"]] == "owner"
+
+
+###SPRINT 3
+
+
+@pytest.mark.parametrize("who", ["owner", "member"])
+def test_user_deleting_account_makes_private_products_public(
+    client,
+    shared_home_with_products,
+    who,
+    list_home_products_db,
+):
+    if who == "owner":
+        delete_headers = shared_home_with_products["owner_headers"]
+        target_product_name = shared_home_with_products["products"]["owner_private"][
+            "payload"
+        ]["name"]
+        other_private_product_name = shared_home_with_products["products"][
+            "member1_private"
+        ]["payload"]["name"]
+    else:
+        delete_headers = shared_home_with_products["member1_headers"]
+        target_product_name = shared_home_with_products["products"]["member1_private"][
+            "payload"
+        ]["name"]
+        other_private_product_name = shared_home_with_products["products"][
+            "owner_private"
+        ]["payload"]["name"]
+
+    home_id = shared_home_with_products["home_id"]
+
+    old_products = list_home_products_db(home_id)
+
+    old_target_product = next(
+        (product for product in old_products if product["name"] == target_product_name),
+        None,
+    )
+    assert old_target_product is not None
+    assert old_target_product["is_private"] is True
+
+    delete_response = client.delete("/auth/delete", headers=delete_headers)
+    assert delete_response.status_code == 200, delete_response.text
+
+    new_products = list_home_products_db(home_id)
+
+    new_target_product = next(
+        (product for product in new_products if product["name"] == target_product_name),
+        None,
+    )
+    assert new_target_product is not None
+    assert new_target_product["is_private"] is False
+    assert new_target_product["owner_user_id"] is None
+
+    new_other_product = next(
+        (
+            product
+            for product in new_products
+            if product["name"] == other_private_product_name
+        ),
+        None,
+    )
+    assert new_other_product is not None
+    assert new_other_product["is_private"] is True
