@@ -238,6 +238,7 @@ def get_inventory(
         productes=productes,
     )
 
+
 @router.get("/categories/all")
 def get_all_inventory_categories():
     return {
