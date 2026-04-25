@@ -1,7 +1,14 @@
 import { router } from "expo-router";
 import { ArrowLeft, CircleAlert, Eye, EyeOff } from "lucide-react-native";
 import React, { useRef, useState } from "react";
-import { Text, TextInput, TouchableOpacity, View, Alert } from "react-native";
+import {
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+  Alert,
+  Platform,
+} from "react-native";
 import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -42,89 +49,108 @@ export default function LoginScreen() {
   };
 
   /*
-    * Validación de contraseña (mínimo 6 caracteres para login)
-  */
+   * Validación de contraseña (mínimo 6 caracteres para login)
+   */
   const isValidPassword = (password: string) => {
     return password.length >= 6;
   };
 
   const handlePasswordEndEditing = (text: string) => {
-  if (!isValidPassword(text)) {
-    setPasswordError("La contraseña debe tener al menos 6 caracteres");
-  } else {
-    setPasswordError("");
-  }
-};
+    if (!isValidPassword(text)) {
+      setPasswordError("La contraseña debe tener al menos 6 caracteres");
+    } else {
+      setPasswordError("");
+    }
+  };
 
   /**
    * Lógica de Inicio de Sesión
    */
-const handleLogin = () => {
-  let isValid = true;
+  const handleLogin = () => {
+    let isValid = true;
 
-  // Validar Email
-  if (!isValidEmail(email)) {
-    setEmailError("Correo no válido");
-    isValid = false;
-  } else {
-    setEmailError("");
-  }
+    // Validar Email
+    if (!isValidEmail(email)) {
+      setEmailError("Correo no válido");
+      isValid = false;
+    } else {
+      setEmailError("");
+    }
 
-  // Validar Contraseña (mínimo 6 caracteres para login)
-  if (!isValidPassword(password)) {
-    setPasswordError("La contraseña debe tener al menos 6 caracteres");
-    isValid = false;
-  } else {
-    setPasswordError("");
-  }
+    // Validar Contraseña (mínimo 6 caracteres para login)
+    if (!isValidPassword(password)) {
+      setPasswordError("La contraseña debe tener al menos 6 caracteres");
+      isValid = false;
+    } else {
+      setPasswordError("");
+    }
 
-  // Si los datos no son válidos, mostramos un alert de error
-  if (!isValid) {
-    Alert.alert(
-      "Error en los datos",
-      "Por favor, revisa los campos. Asegúrate de que el correo y la contraseña sean correctos.",
-      [
-        {
-          text: "OK",
-        },
-      ],
-      { cancelable: false }
-    );
-    return; // Detener la ejecución de la función si hay errores
-  }
+    const messageInValid =
+      "Por favor, revisa los campos. Asegúrate de que el correo y la contraseña sean correctos.";
 
-  // Buscamos el usuario en nuestra "base de datos" simulada y verificamos la contraseña
-  const userFound = usersDB.find(
-    (user) => user.email === email.trim() && user.password === password
-  );
+    // Si los datos no son válidos, mostramos un alert de error
+    if (!isValid) {
+      if (Platform.OS === "web") {
+        window.alert(messageInValid);
+      } else {
+        Alert.alert(
+          "Error en los datos",
+          messageInValid,
+          [
+            {
+              text: "OK",
+            },
+          ],
+          { cancelable: false },
+        );
+      }
+      return; // Detener la ejecución de la función si hay errores
+    } else {
+      // Si los datos son válidos, procedemos a verificar el usuario
+      const userFound = usersDB.find(
+        (user) => user.email === email.trim() && user.password === password,
+      );
 
-  if (userFound) {
-    // Si el usuario está en la base de datos, mostramos el alert de éxito
-    Alert.alert(
-      "Inicio de sesión exitoso",
-      "Bienvenido a FoodSync",
-      [
-        {
-          text: "OK",
-          onPress: () => router.replace("/(tabs)/settings"),
-        },
-      ],
-      { cancelable: false }
-    );
-  } else {
-    // Si no se encuentra el usuario, mostramos el alert de error
-    Alert.alert(
-      "Error al hacer inicio de sesión",
-      "Verifica tu correo y contraseña.",
-      [
-        {
-          text: "OK",
-        },
-      ],
-      { cancelable: false }
-    );
-  }
-};
+      const messageLogin = "Bienvenido a FoodSync";
+      const messageIncorrectLogin = "Correo o contraseña incorrectos";
+
+      if (userFound) {
+        if (Platform.OS === "web") {
+          window.alert(messageLogin);
+          router.replace("/(tabs)/settings");
+        } else {
+          // Si el usuario está en la base de datos, mostramos el alert de éxito
+          Alert.alert(
+            "Inicio de sesión exitoso",
+            messageLogin,
+            [
+              {
+                text: "OK",
+                onPress: () => router.replace("/(tabs)/household"),
+              },
+            ],
+            { cancelable: false },
+          );
+        }
+      } else {
+        if (Platform.OS === "web") {
+          window.alert(messageIncorrectLogin);
+        } else {
+          // Si no se encuentra el usuario, mostramos el alert de error
+          Alert.alert(
+            "Error al hacer inicio de sesión",
+            messageIncorrectLogin,
+            [
+              {
+                text: "OK",
+              },
+            ],
+            { cancelable: false },
+          );
+        }
+      }
+    }
+  };
 
   return (
     <SafeAreaView className="flex-1 bg-[#F8FAF8]">
@@ -201,7 +227,9 @@ const handleLogin = () => {
                     setPassword(text);
                     if (passwordError) setPasswordError("");
                   }}
-                  onEndEditing={(e) => handlePasswordEndEditing(e.nativeEvent.text)}
+                  onEndEditing={(e) =>
+                    handlePasswordEndEditing(e.nativeEvent.text)
+                  }
                   placeholder="Introduce tu contraseña"
                   placeholderTextColor="#9CA3AF"
                   secureTextEntry={!showPassword}

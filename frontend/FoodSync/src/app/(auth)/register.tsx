@@ -7,7 +7,14 @@ import {
   EyeOff,
 } from "lucide-react-native";
 import React, { useRef, useState } from "react";
-import { Alert, Text, TextInput, TouchableOpacity, View } from "react-native";
+import {
+  Alert,
+  Platform,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from "react-native";
 import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -174,22 +181,35 @@ export default function RegisterScreen() {
       setConfirmPasswordError("");
     }
 
+    const successMessage =
+      "¡Registro Exitoso! Tu cuenta ha sido creada correctamente.";
+    const errorMessage =
+      "Error en el registro. Por favor, corrige los errores antes de registrarte.";
+
     if (isValid) {
-      Alert.alert(
-        "¡Registro Exitoso!",
-        "Tu cuenta ha sido creada correctamente.",
-        [
-          {
-            text: "Continuar",
-            onPress: () => router.replace("/(tabs)/settings"),
-          },
-        ],
-      );
+      if (Platform.OS === "web") {
+        window.alert(successMessage);
+      } else {
+        Alert.alert(
+          "¡Registro Exitoso!",
+          "Tu cuenta ha sido creada correctamente.",
+          [
+            {
+              text: "Continuar",
+              onPress: () => router.replace("/(tabs)/settings"),
+            },
+          ],
+        );
+      }
     } else {
-      Alert.alert(
-        "Error en el registro",
-        "Por favor, corrige los errores antes de registrarte.",
-      );
+      if (Platform.OS === "web") {
+        window.alert(errorMessage);
+      } else {
+        Alert.alert(
+          "Error en el registro",
+          "Por favor, corrige los errores antes de registrarte.",
+        );
+      }
     }
   };
 
