@@ -238,6 +238,17 @@ def get_inventory(
         productes=productes,
     )
 
+@router.get("/categories/all")
+def get_all_inventory_categories():
+    return {
+        "code": "ALL_CATEGORIES_RETRIEVED",
+        "missatge": "Categories completes obtingudes correctament",
+        "categories": [
+            {"value": category.value, "label": CATEGORY_LABELS_CA[category]}
+            for category in ProductCategory
+        ],
+    }
+
 
 @router.get("/categories")
 def get_inventory_categories(
