@@ -171,7 +171,7 @@ def test_can_view_private_products_of_another_user_using_search_and_filter(
     headers = shared_home_with_products["member2_headers"]
     private_product_name = shared_home_with_products["products"]["owner_private"]["payload"]["name"]
     private_product_category = get_db_category(shared_home_with_products, "owner_private")
-
+ 
     response = client.get(
         f"{INVENTORY_ENDPOINT}?nom={private_product_name}&categoria={private_product_category}",
         headers=headers,
