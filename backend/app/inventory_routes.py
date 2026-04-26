@@ -170,13 +170,28 @@ def _apply_off_snapshot_to_catalog_product(
 
     catalog_product.off_last_synced_at = datetime.utcnow()
 
-
-@router.get("", response_model=schemas.InventoryResponseSchema)
+@router.get("", response_model=None)
 def get_inventory(
-    nom: Optional[str] = Query(
-        None, description="Terme de cerca per filtrar l'inventari"
+    search: Optional[str] = Query(
+        None, description="Cerca parcial per nom (case-insensitive). Àlies: nom"
     ),
-    categoria: Optional[str] = Query(None, description="Filtre per categoria"),
+    nom: Optional[str] = Query(None, include_in_schema=False),  # àlies legacy
+    categoria: Optional[str] = Query(None, description="Filtre exacte per categoria"),
+    min_quantity: Optional[int] = Query(
+        None, ge=0, description="Quantitat mínima (inclusiva)"
+    ),
+    max_quantity: Optional[int] = Query(
+        None, ge=0, description="Quantitat màxima (inclusiva)"
+    ),
+    owner_user_id: Optional[str] = Query(
+        None, description="Filtre per UUID de propietari"
+    ),
+    nutrition_score: Optional[str] = Query(
+        None, description="[Futur] Nutriscore (A-E). Acceptat, ignorat."
+    ),
+    expiry_filter: Optional[str] = Query(
+        None, description="[Futur] expired|expiring_soon|ok. Acceptat, ignorat."
+    ),
     current=Depends(app.auth.get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -192,37 +207,51 @@ def get_inventory(
             },
         )
 
-    home_id = membership.home_id
+    # Validació owner_user_id
+    if owner_user_id is not None:
+        try:
+            UUID(owner_user_id)
+        except (ValueError, TypeError):
+            return JSONResponse(
+                status_code=400,
+                content={
+                    "code": "INVALID_USER_ID",
+                    "error": "owner_user_id ha de ser un UUID vàlid.",
+                },
+            )
 
-    query = (
-        db.query(InventoryProduct, CatalogProduct, Category)
-        .join(
-            CatalogProduct,
-            InventoryProduct.id_producte_cataleg == CatalogProduct.id_producte_cataleg,
+    # Validació rang quantitat
+    if (
+        min_quantity is not None
+        and max_quantity is not None
+        and min_quantity > max_quantity
+    ):
+        return JSONResponse(
+            status_code=400,
+            content={
+                "code": "QUANTITY_RANGE_INVALID",
+                "error": "min_quantity no pot ser superior a max_quantity.",
+            },
         )
-        .outerjoin(
-            Category,
-            CatalogProduct.id_categoria == Category.id_categoria,
-        )
-        .filter(
-            InventoryProduct.id_llar == home_id,
-        )
+
+    # Compatibilitat amb el paràmetre legacy `nom`
+    effective_search = search or nom
+
+    filters = InventoryFilterParams(
+        search=effective_search,
+        categoria=categoria,
+        min_quantity=min_quantity,
+        max_quantity=max_quantity,
+        owner_user_id=owner_user_id,
+        nutrition_score=nutrition_score,
+        expiry_filter=expiry_filter,
     )
 
-    if nom:
-        nom = nom.strip()
-        query = query.filter(CatalogProduct.nom.ilike(f"%{nom}%"))
-
-    if categoria:
-        query = query.filter(Category.nom == categoria)
-
-    results = query.all()
+    results = get_filtered_products(db, membership.home_id, filters)
 
     productes = []
     for inv_prod, cat_prod, category in results:
         owners_data = _build_owner_schemas(inv_prod.id_inventari, db)
-        es_privat = len(owners_data) > 0
-
         productes.append(
             schemas.InventoryProductSchema(
                 id_producte=str(inv_prod.id_inventari),
@@ -230,14 +259,18 @@ def get_inventory(
                 quantitat=inv_prod.quantitat,
                 categoria=category.nom if category else "Sense categoria",
                 data_caducitat=inv_prod.data_caducitat,
-                es_privat=es_privat,
+                es_privat=len(owners_data) > 0,
                 propietaris=owners_data,
             )
         )
 
-    return schemas.InventoryResponseSchema(
-        missatge="Inventari obtingut correctament",
-        productes=productes,
+    return JSONResponse(
+        status_code=200,
+        content={
+            "code": "INVENTORY_RETRIEVED",
+            "missatge": "Inventari obtingut correctament",
+            "productes": [p.model_dump(mode="json") for p in productes],
+        },
     )
 
 
@@ -270,132 +303,132 @@ def get_inventory_categories(
         "categories": [{"id": c.id_categoria, "nom": c.nom} for c in categories],
     }
 
-@router.get("/products")
-def get_filtered_inventory(
-    search: Optional[str] = Query(
-        None, description="Cerca parcial per nom del producte (case-insensitive)"
-    ),
-    categoria: Optional[str] = Query(
-        None, description="Filtre exacte per nom de categoria"
-    ),
-    min_quantity: Optional[int] = Query(
-        None, ge=0, description="Quantitat mínima (inclusiva)"
-    ),
-    max_quantity: Optional[int] = Query(
-        None, ge=0, description="Quantitat màxima (inclusiva)"
-    ),
-    owner_user_id: Optional[str] = Query(
-        None,
-        description="Filtre per usuari propietari del producte (UUID en format string)",
-    ),
-    nutrition_score: Optional[str] = Query(
-        None, description="[Futur] Filtre per nutriscore (A-E). Acceptat però ignorat."
-    ),
-    expiry_filter: Optional[str] = Query(
-        None,
-        description=(
-            "[Futur] Filtre per caducitat: expired | expiring_soon | ok. "
-            "Acceptat però ignorat."
-        ),
-    ),
-    current=Depends(app.auth.get_current_user),
-    db: Session = Depends(get_db),
-):
-    """
-    RF-INV-02: Cerca i filtrat de productes de l'inventari.
+# @router.get("/products")
+# def get_filtered_inventory(
+#     search: Optional[str] = Query(
+#         None, description="Cerca parcial per nom del producte (case-insensitive)"
+#     ),
+#     categoria: Optional[str] = Query(
+#         None, description="Filtre exacte per nom de categoria"
+#     ),
+#     min_quantity: Optional[int] = Query(
+#         None, ge=0, description="Quantitat mínima (inclusiva)"
+#     ),
+#     max_quantity: Optional[int] = Query(
+#         None, ge=0, description="Quantitat màxima (inclusiva)"
+#     ),
+#     owner_user_id: Optional[str] = Query(
+#         None,
+#         description="Filtre per usuari propietari del producte (UUID en format string)",
+#     ),
+#     nutrition_score: Optional[str] = Query(
+#         None, description="[Futur] Filtre per nutriscore (A-E). Acceptat però ignorat."
+#     ),
+#     expiry_filter: Optional[str] = Query(
+#         None,
+#         description=(
+#             "[Futur] Filtre per caducitat: expired | expiring_soon | ok. "
+#             "Acceptat però ignorat."
+#         ),
+#     ),
+#     current=Depends(app.auth.get_current_user),
+#     db: Session = Depends(get_db),
+# ):
+#     """
+#     RF-INV-02: Cerca i filtrat de productes de l'inventari.
  
-    Filtres actius (combinables amb AND):
-      - search: coincidència parcial al nom (case-insensitive)
-      - categoria: filtre exacte per nom de categoria
-      - min_quantity / max_quantity: rang de quantitat
+#     Filtres actius (combinables amb AND):
+#       - search: coincidència parcial al nom (case-insensitive)
+#       - categoria: filtre exacte per nom de categoria
+#       - min_quantity / max_quantity: rang de quantitat
  
-    Filtres preparats per a futures iteracions (acceptats, ignorats ara):
-      - nutrition_score: filtre per nutriscore (A, B, C, D, E)
-      - expiry_filter: filtre per caducitat (expired, expiring_soon, ok)
+#     Filtres preparats per a futures iteracions (acceptats, ignorats ara):
+#       - nutrition_score: filtre per nutriscore (A, B, C, D, E)
+#       - expiry_filter: filtre per caducitat (expired, expiring_soon, ok)
  
-    Si no s'especifica cap filtre, retorna tots els productes de la llar.
-    """
-    user, _session = current
+#     Si no s'especifica cap filtre, retorna tots els productes de la llar.
+#     """
+#     user, _session = current
 
-    membership = _get_active_membership(user.id, db)
+#     membership = _get_active_membership(user.id, db)
 
-    if not membership:
-        return JSONResponse(
-            status_code=403,
-            content={
-                "code": "NOT_IN_HOME",
-                "error": "Accés denegat: L'usuari no pertany a cap llar activa.",
-            },
-        )
+#     if not membership:
+#         return JSONResponse(
+#             status_code=403,
+#             content={
+#                 "code": "NOT_IN_HOME",
+#                 "error": "Accés denegat: L'usuari no pertany a cap llar activa.",
+#             },
+#         )
  
-     # Validació UUID owner_user_id
-    if owner_user_id is not None:
-        try:
-            UUID(owner_user_id)
-        except (ValueError, TypeError):
-            return JSONResponse(
-                status_code=400,
-                content={
-                    "code": "INVALID_USER_ID",
-                    "error": "owner_user_id ha de ser un UUID vàlid.",
-                },
-            )
+#      # Validació UUID owner_user_id
+#     if owner_user_id is not None:
+#         try:
+#             UUID(owner_user_id)
+#         except (ValueError, TypeError):
+#             return JSONResponse(
+#                 status_code=400,
+#                 content={
+#                     "code": "INVALID_USER_ID",
+#                     "error": "owner_user_id ha de ser un UUID vàlid.",
+#                 },
+#             )
 
-    # Validació de rang de quantitat
-    if (
-        min_quantity is not None
-        and max_quantity is not None
-        and min_quantity > max_quantity
-    ):
-        return JSONResponse(
-            status_code=400,
-            content={
-                "code": "QUANTITY_RANGE_INVALID",
-                "error": (
-                    "min_quantity no pot ser superior a max_quantity."
-                ),
-            },
-        )
+#     # Validació de rang de quantitat
+#     if (
+#         min_quantity is not None
+#         and max_quantity is not None
+#         and min_quantity > max_quantity
+#     ):
+#         return JSONResponse(
+#             status_code=400,
+#             content={
+#                 "code": "QUANTITY_RANGE_INVALID",
+#                 "error": (
+#                     "min_quantity no pot ser superior a max_quantity."
+#                 ),
+#             },
+#         )
     
  
-    home_id = membership.home_id
+#     home_id = membership.home_id
  
-    filters = InventoryFilterParams(
-        search=search,
-        categoria=categoria,
-        min_quantity=min_quantity,
-        max_quantity=max_quantity,
-        owner_user_id=owner_user_id,
-        nutrition_score=nutrition_score,
-        expiry_filter=expiry_filter,
-    )
+#     filters = InventoryFilterParams(
+#         search=search,
+#         categoria=categoria,
+#         min_quantity=min_quantity,
+#         max_quantity=max_quantity,
+#         owner_user_id=owner_user_id,
+#         nutrition_score=nutrition_score,
+#         expiry_filter=expiry_filter,
+#     )
  
-    results = get_filtered_products(db, home_id, filters)
+#     results = get_filtered_products(db, home_id, filters)
  
-    productes = []
-    for inv_prod, cat_prod, category in results:
-        owners_data = _build_owner_schemas(inv_prod.id_inventari, db)
-        es_privat = len(owners_data) > 0
+#     productes = []
+#     for inv_prod, cat_prod, category in results:
+#         owners_data = _build_owner_schemas(inv_prod.id_inventari, db)
+#         es_privat = len(owners_data) > 0
  
-        productes.append(
-            schemas.InventoryProductSchema(
-                id_producte=str(inv_prod.id_inventari),
-                nom=cat_prod.nom,
-                quantitat=inv_prod.quantitat,
-                categoria=category.nom if category else "Sense categoria",
-                data_caducitat=inv_prod.data_caducitat,
-                es_privat=es_privat,
-                propietaris=owners_data,
-            )
-        )
+#         productes.append(
+#             schemas.InventoryProductSchema(
+#                 id_producte=str(inv_prod.id_inventari),
+#                 nom=cat_prod.nom,
+#                 quantitat=inv_prod.quantitat,
+#                 categoria=category.nom if category else "Sense categoria",
+#                 data_caducitat=inv_prod.data_caducitat,
+#                 es_privat=es_privat,
+#                 propietaris=owners_data,
+#             )
+#         )
  
-    return JSONResponse(
-        status_code=200,
-        content={
-            "code": "PRODUCTS_FETCHED",
-            "products": [p.model_dump(mode="json") for p in productes],
-        },
-    )
+#     return JSONResponse(
+#         status_code=200,
+#         content={
+#             "code": "PRODUCTS_FETCHED",
+#             "products": [p.model_dump(mode="json") for p in productes],
+#         },
+#     )
 
 @router.get(
     "/{id_producte}", response_model=schemas.InventoryProductDetailResponseSchema
