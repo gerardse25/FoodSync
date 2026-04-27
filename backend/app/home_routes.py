@@ -283,13 +283,10 @@ def join_home(
         )
 
     home = (
-        db.query(Home)
-        .filter(
-            Home.invite_code == invite_code,
-            Home.is_active,
+            db.query(Home)
+            .filter(Home.invite_code == invite_code, Home.is_active)
+            .first()
         )
-        .first()
-    )
 
     if not home:
         return JSONResponse(
@@ -300,7 +297,8 @@ def join_home(
             },
         )
 
-    existing_in_home = (
+    # 1. Busquem qualsevol membresia prèvia d'aquest usuari en AQUESTA llar (activa o no)
+    existing_membership_in_this_home = (
         db.query(HomeMembership)
         .filter(
             HomeMembership.user_id == user.id,
@@ -309,7 +307,8 @@ def join_home(
         .first()
     )
 
-    if existing_in_home:
+    # Si ja està activa, error 409
+    if existing_membership_in_this_home and existing_membership_in_this_home.is_active:
         return JSONResponse(
             status_code=409,
             content={
@@ -318,8 +317,9 @@ def join_home(
             },
         )
 
-    existing = _get_active_membership(user.id, db)
-    if existing:
+    # 2. Comprovar si l'usuari ja està en UNA ALTRA llar activa
+    existing_active_elsewhere = _get_active_membership(user.id, db)
+    if existing_active_elsewhere:
         return JSONResponse(
             status_code=409,
             content={

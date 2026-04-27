@@ -19,6 +19,7 @@ from dataclasses import dataclass
 from typing import Optional
 
 from sqlalchemy.orm import Query
+from uuid import UUID
 
 from app.inventory_models import CatalogProduct, Category, InventoryProduct, InventoryProductOwner
 
@@ -75,11 +76,19 @@ def apply_active_filters(
         query = query.filter(InventoryProduct.quantitat <= filters.max_quantity)
     
     if filters.owner_user_id:
-        query = query.filter(
-            InventoryProduct.owners.any(
-                InventoryProductOwner.user_id == filters.owner_user_id
+        # query = query.filter(
+        #     InventoryProduct.owners.any(
+        #         InventoryProductOwner.user_id == filters.owner_user_id
+        #     )
+        # )
+        try:
+            owner_uuid = UUID(filters.owner_user_id) if isinstance(filters.owner_user_id, str) else filters.owner_user_id
+            query = query.join(InventoryProductOwner).filter(
+                InventoryProductOwner.user_id == owner_uuid
             )
-        )
+        except ValueError:
+            # Opcional: gestionar si el string no és un UUID vàlid
+            pass
 
     return query
 

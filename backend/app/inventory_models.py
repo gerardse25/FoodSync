@@ -12,6 +12,7 @@ from sqlalchemy import (
     String,
     Text,
     UniqueConstraint,
+    Boolean,
 )
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
@@ -66,6 +67,9 @@ class InventoryProduct(Base):
 
     quantitat = Column(Integer, default=1, nullable=False)
     data_caducitat = Column(Date, nullable=True)
+
+    # NUEVA COLUMNA:
+    es_privat = Column(Boolean, default=False, nullable=False)
 
     # Camps propis de la compra / llar
     preu = Column(Numeric(10, 2), nullable=True)
