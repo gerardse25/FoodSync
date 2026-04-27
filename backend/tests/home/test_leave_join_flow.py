@@ -313,3 +313,199 @@ def test_join_home_exit_home_create_home(
 
     home_body = get_user_home_body(client, outsider_user["headers"])
     assert home_body["id"] == second_home_id
+
+
+def test_join_home_leave_join_second_existing_home_leave_and_rejoin_first_home(
+    client,
+    outsider_user,
+    shared_home_setup,
+    make_user,
+):
+    first_home_invite_code = shared_home_setup["invite_code"]
+    first_home_id = shared_home_setup["home_id"]
+    headers = outsider_user["headers"]
+    username = outsider_user["payload"]["username"]
+    first_home_member_count = get_home_member_count(client, shared_home_setup["owner_headers"])
+
+    # CREATE SECOND EXISTING HOME
+    second_home_owner_ctx = make_user(
+        username="userexample",
+        email="userexample@example.com",
+    )
+    second_home_id, second_home_invite_code, second_home_owner = create_second_home(
+        client,
+        second_home_owner_ctx,
+    )
+
+    assert second_home_id != first_home_id
+
+    # JOIN FIRST HOME
+    response = client.post(
+        "/home/join",
+        json={"invite_code": first_home_invite_code},
+        headers=headers,
+    )
+
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert body["code"] == "HOME_JOINED"
+    assert body["home"]["id"] == first_home_id
+    assert body["home"]["member_count"] == first_home_member_count + 1
+
+    joined_members = {
+        member["username"]: member["role"] for member in body["home"]["members"]
+    }
+    assert joined_members[username] == "member"
+
+    home_body = get_user_home_body(client, headers)
+    assert home_body["id"] == first_home_id
+
+    # LEAVE FIRST HOME
+    response = client.delete("/home/leave", headers=headers)
+
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert body["code"] == "HOME_LEFT"
+
+    home_response = get_user_home_response(client, headers)
+    assert home_response.status_code == 404, home_response.text
+    assert home_response.json()["code"] == "NOT_IN_HOME"
+
+    # JOIN SECOND HOME
+    response = client.post(
+        "/home/join",
+        json={"invite_code": second_home_invite_code},
+        headers=headers,
+    )
+
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert body["code"] == "HOME_JOINED"
+    assert body["home"]["id"] == second_home_id
+    assert body["home"]["member_count"] == 2
+
+    joined_members = {
+        member["username"]: member["role"] for member in body["home"]["members"]
+    }
+    assert joined_members[username] == "member"
+    assert joined_members[second_home_owner] == "owner"
+
+    home_body = get_user_home_body(client, headers)
+    assert home_body["id"] == second_home_id
+
+    # LEAVE SECOND HOME
+    response = client.delete("/home/leave", headers=headers)
+
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert body["code"] == "HOME_LEFT"
+
+    home_response = get_user_home_response(client, headers)
+    assert home_response.status_code == 404, home_response.text
+    assert home_response.json()["code"] == "NOT_IN_HOME"
+
+    # REJOIN FIRST HOME
+    response = client.post(
+        "/home/join",
+        json={"invite_code": first_home_invite_code},
+        headers=headers,
+    )
+
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert body["code"] == "HOME_JOINED"
+    assert body["home"]["id"] == first_home_id
+    assert body["home"]["member_count"] == first_home_member_count + 1
+
+    joined_members = {
+        member["username"]: member["role"] for member in body["home"]["members"]
+    }
+    assert joined_members[username] == "member"
+
+    home_body = get_user_home_body(client, headers)
+    assert home_body["id"] == first_home_id
+
+
+def test_join_home_leave_create_new_home_leave_and_rejoin_first_home(
+    client,
+    outsider_user,
+    shared_home_setup,
+):
+    first_home_invite_code = shared_home_setup["invite_code"]
+    first_home_id = shared_home_setup["home_id"]
+    headers = outsider_user["headers"]
+    username = outsider_user["payload"]["username"]
+    first_home_member_count = get_home_member_count(client, shared_home_setup["owner_headers"])
+
+    # JOIN FIRST HOME
+    response = client.post(
+        "/home/join",
+        json={"invite_code": first_home_invite_code},
+        headers=headers,
+    )
+
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert body["code"] == "HOME_JOINED"
+    assert body["home"]["id"] == first_home_id
+    assert body["home"]["member_count"] == first_home_member_count + 1
+
+    joined_members = {
+        member["username"]: member["role"] for member in body["home"]["members"]
+    }
+    assert joined_members[username] == "member"
+
+    home_body = get_user_home_body(client, headers)
+    assert home_body["id"] == first_home_id
+
+    # LEAVE FIRST HOME
+    response = client.delete("/home/leave", headers=headers)
+
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert body["code"] == "HOME_LEFT"
+
+    home_response = get_user_home_response(client, headers)
+    assert home_response.status_code == 404, home_response.text
+    assert home_response.json()["code"] == "NOT_IN_HOME"
+
+    # CREATE NEW HOME
+    second_home_id, second_home_invite_code, second_home_owner = create_second_home(client, outsider_user)
+
+    assert second_home_id != first_home_id
+    assert second_home_owner == username
+
+    home_body = get_user_home_body(client, headers)
+    assert home_body["id"] == second_home_id
+
+    # LEAVE SECOND HOME
+    response = client.delete("/home/leave", headers=headers)
+
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert body["code"] == "HOME_LEFT_AND_DISSOLVED"
+
+    home_response = get_user_home_response(client, headers)
+    assert home_response.status_code == 404, home_response.text
+    assert home_response.json()["code"] == "NOT_IN_HOME"
+
+    # REJOIN FIRST HOME
+    response = client.post(
+        "/home/join",
+        json={"invite_code": first_home_invite_code},
+        headers=headers,
+    )
+
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert body["code"] == "HOME_JOINED"
+    assert body["home"]["id"] == first_home_id
+    assert body["home"]["member_count"] == first_home_member_count + 1
+
+    joined_members = {
+        member["username"]: member["role"] for member in body["home"]["members"]
+    }
+    assert joined_members[username] == "member"
+
+    home_body = get_user_home_body(client, headers)
+    assert home_body["id"] == first_home_id
