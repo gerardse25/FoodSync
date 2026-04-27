@@ -62,6 +62,32 @@ def test_can_view_detail_of_private_product_with_single_owner(
     assert product["propietaris"][0]["id_usuari"] == owner_id
     assert product["propietaris"][0]["nom"] == owner_name
 
+def test_user_can_view_detail_of_private_product_with_single_owner(
+    client,
+    shared_home_with_products,
+):
+    headers = shared_home_with_products["member2_headers"]
+    target_product_id = shared_home_with_products["products"]["owner_private"]["db"]["id"]
+    target_product_name = shared_home_with_products["products"]["owner_private"]["db"]["name"]
+    owner_id = shared_home_with_products["owner"]["user"]["id"]
+    owner_name = shared_home_with_products["owner"]["user"]["username"]
+
+    response = get_product_detail_request(client, target_product_id, headers)
+    assert response.status_code == 200, response.text
+
+    body = response.json()
+    assert body["code"] == "PRODUCT_DETAIL_RETRIEVED"
+
+    product = body["producte"]
+    assert product["id_producte"] == str(target_product_id)
+    assert product["nom"] == target_product_name
+    assert product["es_privat"] is True
+    assert product["estat_stock"] == "En estoc"
+
+    assert len(product["propietaris"]) == 1
+    assert product["propietaris"][0]["id_usuari"] == owner_id
+    assert product["propietaris"][0]["nom"] == owner_name
+
 
 def test_can_view_detail_of_product_with_multiple_owners(
     client,
