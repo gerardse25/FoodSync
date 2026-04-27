@@ -151,7 +151,10 @@ def _make_user_products_public(user_id, home_id, db: Session) -> None:
 
     product_ids_tuples = (
         db.query(InventoryProduct.id_inventari)
-        .join(InventoryProductOwner, InventoryProduct.id_inventari == InventoryProductOwner.id_inventari)
+        .join(
+            InventoryProductOwner,
+            InventoryProduct.id_inventari == InventoryProductOwner.id_inventari,
+        )
         .filter(
             InventoryProduct.id_llar == home_id,
             InventoryProductOwner.user_id == user_id
@@ -162,7 +165,7 @@ def _make_user_products_public(user_id, home_id, db: Session) -> None:
     if product_ids:
         db.query(InventoryProduct).filter(
             InventoryProduct.id_inventari.in_(product_ids),
-            InventoryProduct.es_privat == True
+            InventoryProduct.es_privat
         ).update({"es_privat": False}, synchronize_session=False)
         
         db.query(InventoryProductOwner).filter(
@@ -322,7 +325,7 @@ def join_home(
             },
         )
 
-    # 1. Busquem qualsevol membresia prèvia d'aquest usuari en AQUESTA llar (activa o no)
+    # 1. Busquem membresia prèvia d'aquest usuari en AQUESTA llar (activa o no)
     existing_membership_in_this_home = (
         db.query(HomeMembership)
         .filter(
