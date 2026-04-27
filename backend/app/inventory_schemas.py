@@ -3,7 +3,7 @@ from decimal import Decimal
 from typing import List, Optional
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 from app.product_schemas import ProductCategory
 
@@ -27,6 +27,8 @@ class InventoryProductSchema(BaseModel):
     categoria: str
     data_caducitat: Optional[date] = None
     es_privat: bool
+    owner_user_ids: List[str] = []
+    # Si vols l'objecte complex amb nom:
     propietaris: List[ProductOwnerSchema] = []
 
     model_config = ConfigDict(from_attributes=True)
@@ -103,7 +105,7 @@ class CreateInventoryManualProductRequest(BaseModel):
     quantitat: Optional[int] = None
     data_compra: Optional[date] = None
     data_caducitat: Optional[date] = None
-    id_propietaris_privats: Optional[List[UUID]] = None
+    owner_user_ids: Optional[List[UUID]] = Field(default_factory=list)
 
 
 class CreateInventoryProductResponseItem(BaseModel):
@@ -117,6 +119,7 @@ class CreateInventoryProductResponseItem(BaseModel):
     data_caducitat: Optional[date] = None
     codi_barres: Optional[str] = None
     metode_registre: str
+    owner_user_ids: List[str] = []
 
 
 class CreateInventoryProductResponse(BaseModel):
@@ -161,7 +164,7 @@ class ConfirmBarcodeProductRequest(BaseModel):
     quantitat: Optional[int] = None
     data_compra: Optional[date] = None
     data_caducitat: Optional[date] = None
-    id_propietaris_privats: Optional[List[UUID]] = None
+    owner_user_ids: Optional[List[UUID]] = Field(default_factory=list)
 
 
 # =========================
