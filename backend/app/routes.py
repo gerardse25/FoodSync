@@ -12,6 +12,9 @@ import app.models
 import app.schemas
 from app.database import get_db
 from app.validation import contains_control_characters, contains_escape_sequences
+from app.home_models import Home, HomeMembership
+from app.inventory_models import InventoryProduct, InventoryProductOwner
+
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -862,13 +865,38 @@ def delete_account(
     current=Depends(app.auth.get_current_user),
     db: Session = Depends(get_db),
 ):
-    from app.home_models import Home, HomeMembership
-
     user, _session = current
     now = datetime.utcnow()
     result_code = "ACCOUNT_DELETED_NO_HOME"
 
-    # ── Gestió de llar ────────────────────────────────────────
+    # ── 1. Gestió de Productes Privats (NOU) ──────────────────
+    # Busquem els IDs dels productes de l'inventari on aquest usuari n'és propietari
+    # i que estan marcats com a privats.
+    private_products_ids = (
+        db.query(InventoryProduct.id_inventari)
+        .join(InventoryProductOwner)
+        .filter(
+            InventoryProductOwner.user_id == user.id,
+            InventoryProduct.es_privat == True
+        )
+        .all()
+    )
+    
+    product_ids = [p[0] for p in private_products_ids]
+
+    if product_ids:
+        # Actualitzem aquests productes: deixen de ser privats
+        db.query(InventoryProduct).filter(
+            InventoryProduct.id_inventari.in_(product_ids)
+        ).update({"es_privat": False}, synchronize_session=False)
+        
+        # Opcional: Si vols esborrar el vincle de propietat perquè l'usuari ja no existeix
+        db.query(InventoryProductOwner).filter(
+            InventoryProductOwner.id_inventari.in_(product_ids),
+            InventoryProductOwner.user_id == user.id
+        ).delete(synchronize_session=False)
+
+    # ── 2. Gestió de llar (Codi existent) ─────────────────────
     membership = (
         db.query(HomeMembership)
         .filter(HomeMembership.user_id == user.id, HomeMembership.is_active)
@@ -917,7 +945,7 @@ def delete_account(
                 home.updated_at = now
             result_code = "ACCOUNT_DELETED_AND_REMOVED_FROM_HOME"
 
-    # ── Desactivar compte ─────────────────────────────────────
+    # ── 3. Desactivar compte ──────────────────
     user.is_active = False
     old_email_normalized = user.email_normalized
     user.email_normalized = f"deleted::{user.id}::{old_email_normalized}"
