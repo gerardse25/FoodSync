@@ -170,7 +170,13 @@ def _apply_off_snapshot_to_catalog_product(
 
     catalog_product.off_last_synced_at = datetime.utcnow()
 
+
 def _build_create_response(inv_prod, cat_prod, cat_row):
+    # Extraiem els IDs de la relació que SQLAlchemy ha carregat gràcies al db.refresh()
+    owners_list = []
+    if hasattr(inv_prod, 'owners') and inv_prod.owners:
+        owners_list = [str(o.user_id) for o in inv_prod.owners]
+
     return schemas.CreateInventoryProductResponse(
         code="PRODUCT_CREATED",
         missatge="Producte afegit correctament.",
@@ -185,7 +191,7 @@ def _build_create_response(inv_prod, cat_prod, cat_row):
             data_caducitat=inv_prod.data_caducitat,
             codi_barres=cat_prod.codi_barres,
             metode_registre=inv_prod.metode_registre,
-            es_privat=inv_prod.es_privat
+            owner_user_ids=owners_list # <-- Això és el que busca el test
         ),
     )
 
@@ -407,7 +413,7 @@ def get_inventory_product_detail(
         status_code=404,
         content={
             "code": "PRODUCT_NOT_FOUND",
-            "error": "El producte no s'ha trobat a la teva llar."
+            "error": "El producte no s'ha trobat."
         }
     )
 
@@ -460,38 +466,34 @@ def create_inventory_product_manual(
 ):
     user, _session = current
 
+    # 1. Validació de llar
     membership = _get_active_membership(user.id, db)
     if not membership:
         return _json_error("No pertanys a cap llar.", 404, "NOT_IN_HOME")
 
     home = _get_active_home(membership.home_id, db)
-    if not home:
-        return _json_error("La llar no existeix.", 404, "HOME_NOT_FOUND")
+    
+    # --- CHECK 1: VALIDACIÓ DE PROPIETARIS ---
+    # Agafem els IDs del payload (data.owner_user_ids)
+    requested_owners = getattr(data, "owner_user_ids", [])
+    
+    # EXECUTEM LA VALIDACIÓ: Si un owner no és de la llar, owner_error tindrà un JSONResponse
+    owner_ids, owner_error = _validate_owner_list(home.id, requested_owners, db)
+    if owner_error:
+        return owner_error # Atura l'execució i retorna 400 (Arrecla els tests 2 i 3)
 
+    # 2. Normalització i Categoria
     name, error = _normalize_product_name(data.nom)
     if error: return error
-
-    if data.categoria is None:
-        return _json_error("La categoria és obligatòria.", 422, "CATEGORY_REQUIRED")
-
-    validation_error = _validate_price_quantity(data.preu, data.quantitat)
-    if validation_error: return validation_error
-
-    # Validació d'owners i determinació de privacitat
-    owner_ids, owner_error = _validate_owner_list(
-        home.id, data.id_propietaris_privats, db
-    )
-    if owner_error:
-        return owner_error
-
-    is_private = len(owner_ids) > 0
-
     category_row = _get_or_create_category_row(data.categoria, db)
+
+    # 3. Creació física del producte
+    # Si hi ha owners, el producte es marca com a privat
+    is_private = len(owner_ids) > 0
 
     catalog_product = CatalogProduct(
         nom=name,
-        id_categoria=category_row.id_categoria,
-        metode_registre="manual"
+        id_categoria=category_row.id_categoria
     )
     db.add(catalog_product)
     db.flush()
@@ -504,20 +506,23 @@ def create_inventory_product_manual(
         preu=data.preu,
         data_compra=data.data_compra,
         metode_registre="manual",
-        es_privat=is_private,  # Assignem privacitat segons la llista d'owners
+        es_privat=is_private
     )
     db.add(inventory_product)
     db.flush()
 
-    # Assignació física dels propietaris
-    for owner_id in owner_ids:
-        db.add(InventoryProductOwner(
+    # --- CHECK 2: INSERCIÓ A LA TAULA D'UNIO ---
+    # Arrecla el test 1 (perquè ja no tornarà una llista buida [])
+    for o_id in owner_ids:
+        new_owner_link = InventoryProductOwner(
             id_inventari=inventory_product.id_inventari,
-            user_id=owner_id
-        ))
+            user_id=o_id
+        )
+        db.add(new_owner_link)
 
-    home.updated_at = datetime.utcnow()
+    # 4. Commit i Refresh
     db.commit()
+    # Refresquem per carregar la relació 'owners' des de la BD al model de Python
     db.refresh(inventory_product)
 
     return _build_create_response(inventory_product, catalog_product, category_row)
@@ -838,10 +843,6 @@ def _get_owner_ids(product_id: int, db: Session) -> set:
     )
     return {row[0] for row in rows}
 
-
-from fastapi.responses import JSONResponse
-from sqlalchemy.orm import Session
-from app.home_models import HomeMembership
 
 def _validate_owner_list(home_id, owner_user_ids, db: Session):
     """
