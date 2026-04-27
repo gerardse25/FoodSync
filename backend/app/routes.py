@@ -888,6 +888,12 @@ def delete_account(
             InventoryProduct.es_privat == True
         ).update({"es_privat": False}, synchronize_session=False)
         
+        # Eliminar ownership
+        db.query(InventoryProductOwner).filter(
+            InventoryProductOwner.id_inventari.in_(product_ids),
+            InventoryProductOwner.user_id == user.id
+        ).delete(synchronize_session=False)
+        
         # Forcem l'escriptura a la base de dades
         db.flush()
 

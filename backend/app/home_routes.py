@@ -146,6 +146,31 @@ def _dissolve_home(home: Home, db: Session) -> None:
     home.updated_at = now
 
 
+def _make_user_products_public(user_id, home_id, db: Session) -> None:
+    from app.inventory_models import InventoryProduct, InventoryProductOwner
+
+    product_ids_tuples = (
+        db.query(InventoryProduct.id_inventari)
+        .join(InventoryProductOwner, InventoryProduct.id_inventari == InventoryProductOwner.id_inventari)
+        .filter(
+            InventoryProduct.id_llar == home_id,
+            InventoryProductOwner.user_id == user_id
+        )
+        .all()
+    )
+    product_ids = [p[0] for p in product_ids_tuples]
+    if product_ids:
+        db.query(InventoryProduct).filter(
+            InventoryProduct.id_inventari.in_(product_ids),
+            InventoryProduct.es_privat == True
+        ).update({"es_privat": False}, synchronize_session=False)
+        
+        db.query(InventoryProductOwner).filter(
+            InventoryProductOwner.id_inventari.in_(product_ids),
+            InventoryProductOwner.user_id == user_id
+        ).delete(synchronize_session=False)
+
+
 # ── Endpoints ─────────────────────────────────────────────────────────────────
 
 
@@ -350,12 +375,19 @@ def join_home(
             },
         )
 
-    membership = HomeMembership(
-        home_id=home.id,
-        user_id=user.id,
-        role="member",
-    )
-    db.add(membership)
+    if existing_membership_in_this_home:
+        membership = existing_membership_in_this_home
+        membership.is_active = True
+        membership.left_at = None
+        membership.joined_at = datetime.utcnow()
+        membership.role = "member"
+    else:
+        membership = HomeMembership(
+            home_id=home.id,
+            user_id=user.id,
+            role="member",
+        )
+        db.add(membership)
 
     home.updated_at = datetime.utcnow()
     db.commit()
@@ -542,6 +574,7 @@ def leave_home(
             home.owner_id = new_owner_membership.user_id
             home.updated_at = now
 
+            _make_user_products_public(user.id, home.id, db)
             db.commit()
 
             return JSONResponse(
@@ -560,6 +593,7 @@ def leave_home(
             home.is_active = False
             home.updated_at = now
 
+            _make_user_products_public(user.id, home.id, db)
             db.commit()
 
             return JSONResponse(
@@ -574,6 +608,8 @@ def leave_home(
     membership.is_active = False
     membership.left_at = now
     home.updated_at = now
+    
+    _make_user_products_public(user.id, home.id, db)
     db.commit()
     db.expire_all()
 
@@ -655,6 +691,8 @@ def kick_member(
     target_membership.is_active = False
     target_membership.left_at = now
     home.updated_at = now
+    
+    _make_user_products_public(data.user_id, home.id, db)
     db.commit()
 
     kicked_user = (
