@@ -869,14 +869,14 @@ def delete_account(
     result_code = "ACCOUNT_DELETED_NO_HOME"
 
     # ── 1. GESTIÓ DE PRODUCTES PRIVATS (VERSIÓ SIMPLICADA) ──────────
-    
+
     # 1.1 Obtenim directament els IDs dels productes on l'usuari és owner
     product_ids_tuples = (
         db.query(InventoryProductOwner.id_inventari)
         .filter(InventoryProductOwner.user_id == user.id)
         .all()
     )
-    
+
     # Convertim la llista de tuples [(id1,), (id2,)] en una llista plana [id1, id2]
     product_ids = [p[0] for p in product_ids_tuples]
 
@@ -886,13 +886,13 @@ def delete_account(
             InventoryProduct.id_inventari.in_(product_ids),
             InventoryProduct.es_privat,
         ).update({"es_privat": False}, synchronize_session=False)
-        
+
         # Eliminar ownership
         db.query(InventoryProductOwner).filter(
             InventoryProductOwner.id_inventari.in_(product_ids),
-            InventoryProductOwner.user_id == user.id
+            InventoryProductOwner.user_id == user.id,
         ).delete(synchronize_session=False)
-        
+
         # Forcem l'escriptura a la base de dades
         db.flush()
 
@@ -950,8 +950,7 @@ def delete_account(
 
     # Tancar sessions (Molt important per als tests)
     db.query(app.models.Session).filter(
-        app.models.Session.user_id == user.id, 
-        app.models.Session.is_active
+        app.models.Session.user_id == user.id, app.models.Session.is_active
     ).update({"is_active": False}, synchronize_session=False)
 
     db.commit()

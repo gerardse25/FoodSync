@@ -8,7 +8,9 @@ def test_inventory_search_by_exact_name_returns_correct_product(
     shared_home_with_products,
 ):
     headers = shared_home_with_products["owner_headers"]
-    target_name = shared_home_with_products["products"]["owner_private"]["payload"]["name"]
+    target_name = shared_home_with_products["products"]["owner_private"]["payload"][
+        "name"
+    ]
 
     response = client.get(f"{INVENTORY_ENDPOINT}?nom={target_name}", headers=headers)
     assert response.status_code == 200, response.text
@@ -43,7 +45,9 @@ def test_inventory_search_with_no_results_returns_empty_list(
 ):
     headers = shared_home_with_products["owner_headers"]
 
-    response = client.get(f"{INVENTORY_ENDPOINT}?nom=this-product-does-not-exist", headers=headers)
+    response = client.get(
+        f"{INVENTORY_ENDPOINT}?nom=this-product-does-not-exist", headers=headers
+    )
     assert response.status_code == 200, response.text
 
     body = response.json()
@@ -56,9 +60,13 @@ def test_inventory_search_is_case_insensitive(
     shared_home_with_products,
 ):
     headers = shared_home_with_products["member1_headers"]
-    target_name = shared_home_with_products["products"]["public_product"]["payload"]["name"]
+    target_name = shared_home_with_products["products"]["public_product"]["payload"][
+        "name"
+    ]
 
-    response = client.get(f"{INVENTORY_ENDPOINT}?nom={target_name.upper()}", headers=headers)
+    response = client.get(
+        f"{INVENTORY_ENDPOINT}?nom={target_name.upper()}", headers=headers
+    )
     assert response.status_code == 200, response.text
 
     body = response.json()
@@ -72,9 +80,13 @@ def test_inventory_search_trims_leading_and_trailing_spaces(
     shared_home_with_products,
 ):
     headers = shared_home_with_products["member1_headers"]
-    target_name = shared_home_with_products["products"]["public_product"]["payload"]["name"]
+    target_name = shared_home_with_products["products"]["public_product"]["payload"][
+        "name"
+    ]
 
-    response = client.get(f"{INVENTORY_ENDPOINT}?nom=  {target_name}  ", headers=headers)
+    response = client.get(
+        f"{INVENTORY_ENDPOINT}?nom=  {target_name}  ", headers=headers
+    )
     assert response.status_code == 200, response.text
 
     body = response.json()
@@ -103,9 +115,13 @@ def test_can_view_private_products_of_another_user_using_name_search(
     shared_home_with_products,
 ):
     headers = shared_home_with_products["member2_headers"]
-    private_product_name = shared_home_with_products["products"]["owner_private"]["payload"]["name"]
+    private_product_name = shared_home_with_products["products"]["owner_private"][
+        "payload"
+    ]["name"]
 
-    response = client.get(f"{INVENTORY_ENDPOINT}?nom={private_product_name}", headers=headers)
+    response = client.get(
+        f"{INVENTORY_ENDPOINT}?nom={private_product_name}", headers=headers
+    )
     assert response.status_code == 200, response.text
 
     body = response.json()
@@ -125,7 +141,9 @@ def test_unauthenticated_user_cannot_search_inventory(client, headers):
 
 
 def test_unauthorized_user_cannot_search_inventory(client, outsider_user):
-    response = client.get(f"{INVENTORY_ENDPOINT}?nom=milk", headers=outsider_user["headers"])
+    response = client.get(
+        f"{INVENTORY_ENDPOINT}?nom=milk", headers=outsider_user["headers"]
+    )
 
     assert response.status_code == 403, response.text
     body = response.json()

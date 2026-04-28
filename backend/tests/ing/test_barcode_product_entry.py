@@ -23,7 +23,9 @@ def seed_local_catalog_product(
     SessionLocal = app_modules["database"].SessionLocal
 
     with SessionLocal() as db:
-        category = db.query(inventory_models.Category).filter_by(nom=categoria_label).first()
+        category = (
+            db.query(inventory_models.Category).filter_by(nom=categoria_label).first()
+        )
         if category is None:
             category = inventory_models.Category(nom=categoria_label)
             db.add(category)
@@ -105,7 +107,9 @@ def test_lookup_barcode_finds_product_in_local_catalog(
         imatge_url="https://example.com/local-rice.jpg",
     )
 
-    response = client.get(f"{BARCODE_LOOKUP_ENDPOINT_PREFIX}/{barcode}", headers=headers)
+    response = client.get(
+        f"{BARCODE_LOOKUP_ENDPOINT_PREFIX}/{barcode}", headers=headers
+    )
     assert response.status_code == 200, response.text
 
     body = response.json()
@@ -148,7 +152,9 @@ def test_lookup_barcode_finds_product_in_open_food_facts_when_not_in_local_catal
         fake_lookup_barcode_enriched,
     )
 
-    response = client.get(f"{BARCODE_LOOKUP_ENDPOINT_PREFIX}/{barcode}", headers=headers)
+    response = client.get(
+        f"{BARCODE_LOOKUP_ENDPOINT_PREFIX}/{barcode}", headers=headers
+    )
     assert response.status_code == 200, response.text
 
     body = response.json()
@@ -185,7 +191,9 @@ def test_lookup_barcode_returns_not_found_when_product_does_not_exist_anywhere(
         fake_lookup_barcode_enriched,
     )
 
-    response = client.get(f"{BARCODE_LOOKUP_ENDPOINT_PREFIX}/{barcode}", headers=headers)
+    response = client.get(
+        f"{BARCODE_LOOKUP_ENDPOINT_PREFIX}/{barcode}", headers=headers
+    )
     assert response.status_code == 200, response.text
 
     body = response.json()
@@ -215,7 +223,9 @@ def test_lookup_barcode_returns_service_unavailable_when_off_service_fails(
         fake_lookup_barcode_enriched,
     )
 
-    response = client.get(f"{BARCODE_LOOKUP_ENDPOINT_PREFIX}/{barcode}", headers=headers)
+    response = client.get(
+        f"{BARCODE_LOOKUP_ENDPOINT_PREFIX}/{barcode}", headers=headers
+    )
     assert response.status_code == 503, response.text
 
     body = response.json()
@@ -230,7 +240,9 @@ def test_lookup_barcode_rejects_invalid_barcode_format(
 ):
     headers = shared_home_setup["owner_headers"]
 
-    response = client.get(f"{BARCODE_LOOKUP_ENDPOINT_PREFIX}/{barcode}", headers=headers)
+    response = client.get(
+        f"{BARCODE_LOOKUP_ENDPOINT_PREFIX}/{barcode}", headers=headers
+    )
     assert response.status_code == 400, response.text
 
     body = response.json()
@@ -298,7 +310,10 @@ def test_confirm_barcode_product_from_local_catalog_creates_inventory_product(
 
     body = response.json()
     assert body["code"] == "PRODUCT_CREATED"
-    assert body["missatge"] == "Producte amb codi de barres afegit correctament a l'inventari."
+    assert (
+        body["missatge"]
+        == "Producte amb codi de barres afegit correctament a l'inventari."
+    )
     assert body["producte"]["nom"] == "Local lentils"
     assert body["producte"]["quantitat"] == 2
     assert body["producte"]["categoria"] == "Llegums"
@@ -307,7 +322,9 @@ def test_confirm_barcode_product_from_local_catalog_creates_inventory_product(
     assert body["producte"]["data_caducitat"] == "2026-05-10"
     assert body["producte"]["codi_barres"] == barcode
     assert body["producte"]["metode_registre"] == "barcode"
-    assert body["producte"]["id_producte_cataleg"] == str(local_catalog["id_producte_cataleg"])
+    assert body["producte"]["id_producte_cataleg"] == str(
+        local_catalog["id_producte_cataleg"]
+    )
 
     inventory_rows = list_inventory_products_db(app_modules, home_id)
     assert len(inventory_rows) == 1
@@ -616,7 +633,10 @@ def test_confirm_barcode_rejects_invalid_price(
     assert body["code"] == "PRICE_INVALID"
 
 
-@pytest.mark.parametrize("quantity, expected_code", [(0, "QUANTITY_INVALID"), (-1, "QUANTITY_INVALID"), (100, "QUANTITY_TOO_HIGH")])
+@pytest.mark.parametrize(
+    "quantity, expected_code",
+    [(0, "QUANTITY_INVALID"), (-1, "QUANTITY_INVALID"), (100, "QUANTITY_TOO_HIGH")],
+)
 def test_confirm_barcode_rejects_invalid_quantity(
     client,
     shared_home_setup,
@@ -742,7 +762,9 @@ def test_user_without_home_cannot_confirm_barcode_product(
         "id_propietaris_privats": [],
     }
 
-    response = client.post(BARCODE_CONFIRM_ENDPOINT, json=payload, headers=outsider_user["headers"])
+    response = client.post(
+        BARCODE_CONFIRM_ENDPOINT, json=payload, headers=outsider_user["headers"]
+    )
     assert response.status_code == 404, response.text
 
     body = response.json()

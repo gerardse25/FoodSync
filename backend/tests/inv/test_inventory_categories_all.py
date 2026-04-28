@@ -30,12 +30,10 @@ def test_get_all_categories_returns_all_enum_categories(client):
     body = response.json()
 
     expected = {
-        (category.value, CATEGORY_LABELS_CA[category])
-        for category in ProductCategory
+        (category.value, CATEGORY_LABELS_CA[category]) for category in ProductCategory
     }
     returned = {
-        (category["value"], category["label"])
-        for category in body["categories"]
+        (category["value"], category["label"]) for category in body["categories"]
     }
 
     assert returned == expected

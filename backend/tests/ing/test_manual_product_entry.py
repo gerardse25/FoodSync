@@ -122,7 +122,9 @@ def test_added_product_is_persisted_in_home_products(
     assert add_response.json()["code"] == "PRODUCT_CREATED"
 
     products = list_home_products_db(home_id)
-    persisted = next((item for item in products if item["name"] == product["nom"]), None)
+    persisted = next(
+        (item for item in products if item["name"] == product["nom"]), None
+    )
     assert persisted is not None
     assert persisted["quantity"] == product["quantitat"]
 
@@ -147,7 +149,9 @@ def test_added_product_is_shown_in_inventory(
     assert add_response.json()["code"] == "PRODUCT_CREATED"
 
     products = list_home_products_db(home_id)
-    shown_product = next((item for item in products if item["name"] == product["nom"]), None)
+    shown_product = next(
+        (item for item in products if item["name"] == product["nom"]), None
+    )
     assert shown_product is not None
     assert shown_product["name"] == product["nom"]
     assert shown_product["quantity"] == product["quantitat"]
@@ -374,7 +378,9 @@ def test_can_add_private_product_assigned_to_specific_member(
     assert body["code"] == "PRODUCT_CREATED"
 
     products = list_home_products_db(home_id)
-    created_product = next((item for item in products if item["name"] == product["nom"]), None)
+    created_product = next(
+        (item for item in products if item["name"] == product["nom"]), None
+    )
     assert created_product is not None
     assert created_product["owner_user_ids"] == [member1_id]
     assert created_product["owner_user_id"] == member1_id
@@ -404,7 +410,9 @@ def test_can_add_product_without_specific_owner_as_public(
     assert body["code"] == "PRODUCT_CREATED"
 
     products = list_home_products_db(home_id)
-    created_product = next((item for item in products if item["name"] == product["nom"]), None)
+    created_product = next(
+        (item for item in products if item["name"] == product["nom"]), None
+    )
     assert created_product is not None
     assert created_product["owner_user_ids"] == []
     assert created_product["owner_user_id"] is None

@@ -157,20 +157,19 @@ def _make_user_products_public(user_id, home_id, db: Session) -> None:
         )
         .filter(
             InventoryProduct.id_llar == home_id,
-            InventoryProductOwner.user_id == user_id
+            InventoryProductOwner.user_id == user_id,
         )
         .all()
     )
     product_ids = [p[0] for p in product_ids_tuples]
     if product_ids:
         db.query(InventoryProduct).filter(
-            InventoryProduct.id_inventari.in_(product_ids),
-            InventoryProduct.es_privat
+            InventoryProduct.id_inventari.in_(product_ids), InventoryProduct.es_privat
         ).update({"es_privat": False}, synchronize_session=False)
-        
+
         db.query(InventoryProductOwner).filter(
             InventoryProductOwner.id_inventari.in_(product_ids),
-            InventoryProductOwner.user_id == user_id
+            InventoryProductOwner.user_id == user_id,
         ).delete(synchronize_session=False)
 
 
@@ -311,10 +310,8 @@ def join_home(
         )
 
     home = (
-            db.query(Home)
-            .filter(Home.invite_code == invite_code, Home.is_active)
-            .first()
-        )
+        db.query(Home).filter(Home.invite_code == invite_code, Home.is_active).first()
+    )
 
     if not home:
         return JSONResponse(
@@ -611,7 +608,7 @@ def leave_home(
     membership.is_active = False
     membership.left_at = now
     home.updated_at = now
-    
+
     _make_user_products_public(user.id, home.id, db)
     db.commit()
     db.expire_all()
@@ -694,7 +691,7 @@ def kick_member(
     target_membership.is_active = False
     target_membership.left_at = now
     home.updated_at = now
-    
+
     _make_user_products_public(data.user_id, home.id, db)
     db.commit()
 

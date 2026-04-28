@@ -16,7 +16,9 @@ def modify_product_request(client, product_id, modificacio, headers):
 
 
 def get_product_by_name(products, target_name):
-    return next((product for product in products if product["name"] == target_name), None)
+    return next(
+        (product for product in products if product["name"] == target_name), None
+    )
 
 
 @pytest.mark.parametrize(
@@ -80,7 +82,9 @@ def test_zero_modification_keeps_same_quantity(
     headers = shared_home_with_products["owner_headers"]
     home_id = shared_home_with_products["home_id"]
     target_id = shared_home_with_products["products"]["public_product"]["db"]["id"]
-    target_name = shared_home_with_products["products"]["public_product"]["payload"]["name"]
+    target_name = shared_home_with_products["products"]["public_product"]["payload"][
+        "name"
+    ]
 
     before_products = list_home_products_db(home_id)
     before_product = get_product_by_name(before_products, target_name)
@@ -163,14 +167,18 @@ def test_cannot_consume_product_when_it_is_already_out_of_stock(
     headers = shared_home_with_single_product["owner_headers"]
     home_id = shared_home_with_single_product["home_id"]
     target_id = shared_home_with_single_product["products"]["only_product"]["db"]["id"]
-    target_name = shared_home_with_single_product["products"]["only_product"]["payload"]["name"]
+    target_name = shared_home_with_single_product["products"]["only_product"][
+        "payload"
+    ]["name"]
 
     before_products = list_home_products_db(home_id)
     before_product = get_product_by_name(before_products, target_name)
     assert before_product is not None
     initial_quantity = before_product["quantity"]
 
-    response_to_zero = modify_product_request(client, target_id, -initial_quantity, headers)
+    response_to_zero = modify_product_request(
+        client, target_id, -initial_quantity, headers
+    )
     assert response_to_zero.status_code == 200, response_to_zero.text
     assert response_to_zero.json()["code"] == "PRODUCT_QUANTITY_UPDATED"
 
@@ -320,7 +328,9 @@ def test_other_member_sees_updated_quantity_in_persisted_home_state(
     actor_headers = shared_home_with_products["owner_headers"]
     home_id = shared_home_with_products["home_id"]
     target_id = shared_home_with_products["products"]["public_product"]["db"]["id"]
-    target_name = shared_home_with_products["products"]["public_product"]["payload"]["name"]
+    target_name = shared_home_with_products["products"]["public_product"]["payload"][
+        "name"
+    ]
 
     before_products = list_home_products_db(home_id)
     before_product = get_product_by_name(before_products, target_name)

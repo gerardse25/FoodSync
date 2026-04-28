@@ -31,7 +31,9 @@ def get_home_member_count(client, headers):
     return body["member_count"]
 
 
-def test_join_home_exit_home_join_home_again_succeeds(client, outsider_user, shared_home_setup):
+def test_join_home_exit_home_join_home_again_succeeds(
+    client, outsider_user, shared_home_setup
+):
     home_invite_code = shared_home_setup["invite_code"]
     home_id = shared_home_setup["home_id"]
     headers = outsider_user["headers"]
@@ -179,7 +181,9 @@ def test_create_home_exit_home_join_different_home(
     num_users_start = get_home_member_count(client, shared_home_setup["owner_headers"])
 
     # CREATE FIRST HOME
-    first_home_id, first_home_invite_code, first_home_owner = create_second_home(client, outsider_user)
+    first_home_id, first_home_invite_code, first_home_owner = create_second_home(
+        client, outsider_user
+    )
     assert first_home_owner == username
     assert first_home_invite_code != second_home_invite_code
     assert first_home_id != second_home_id
@@ -230,7 +234,9 @@ def test_create_home_exit_home_create_home(
     username = outsider_user["payload"]["username"]
 
     # CREATE FIRST HOME
-    first_home_id, first_home_invite_code, first_home_owner = create_second_home(client, outsider_user)
+    first_home_id, first_home_invite_code, first_home_owner = create_second_home(
+        client, outsider_user
+    )
     assert first_home_owner == username
 
     home_body = get_user_home_body(client, outsider_user["headers"])
@@ -249,7 +255,9 @@ def test_create_home_exit_home_create_home(
     assert home_body["code"] == "NOT_IN_HOME"
 
     # CREATE SECOND HOME
-    second_home_id, second_home_invite_code, second_home_owner = create_second_home(client, outsider_user)
+    second_home_id, second_home_invite_code, second_home_owner = create_second_home(
+        client, outsider_user
+    )
     assert second_home_owner == username
     assert second_home_invite_code != first_home_invite_code
     assert second_home_id != first_home_id
@@ -303,7 +311,9 @@ def test_join_home_exit_home_create_home(
     assert home_body["code"] == "NOT_IN_HOME"
 
     # CREATE HOME
-    second_home_id, second_home_invite_code, second_home_owner = create_second_home(client, outsider_user)
+    second_home_id, second_home_invite_code, second_home_owner = create_second_home(
+        client, outsider_user
+    )
     assert second_home_owner == username
     assert second_home_invite_code != first_home_invite_code
     assert second_home_id != first_home_id
@@ -322,7 +332,9 @@ def test_join_home_leave_join_second_existing_home_leave_and_rejoin_first_home(
     first_home_id = shared_home_setup["home_id"]
     headers = outsider_user["headers"]
     username = outsider_user["payload"]["username"]
-    first_home_member_count = get_home_member_count(client, shared_home_setup["owner_headers"])
+    first_home_member_count = get_home_member_count(
+        client, shared_home_setup["owner_headers"]
+    )
 
     # CREATE SECOND EXISTING HOME
     second_home_owner_ctx = make_user(
@@ -432,7 +444,9 @@ def test_join_home_leave_create_new_home_leave_and_rejoin_first_home(
     first_home_id = shared_home_setup["home_id"]
     headers = outsider_user["headers"]
     username = outsider_user["payload"]["username"]
-    first_home_member_count = get_home_member_count(client, shared_home_setup["owner_headers"])
+    first_home_member_count = get_home_member_count(
+        client, shared_home_setup["owner_headers"]
+    )
 
     # JOIN FIRST HOME
     response = client.post(
@@ -467,7 +481,9 @@ def test_join_home_leave_create_new_home_leave_and_rejoin_first_home(
     assert home_response.json()["code"] == "NOT_IN_HOME"
 
     # CREATE NEW HOME
-    second_home_id, second_home_invite_code, second_home_owner = create_second_home(client, outsider_user)
+    second_home_id, second_home_invite_code, second_home_owner = create_second_home(
+        client, outsider_user
+    )
 
     assert second_home_id != first_home_id
     assert second_home_owner == username
