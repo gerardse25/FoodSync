@@ -6,8 +6,8 @@ from datetime import date
 from decimal import Decimal
 from pathlib import Path
 
-import pytest
 from fastapi.testclient import TestClient
+import pytest
 
 
 BACKEND_ROOT = Path(__file__).resolve().parents[1]
@@ -46,7 +46,8 @@ def app_modules(tmp_path, monkeypatch):
     config_mod.FRONTEND_RESET_URL = "http://localhost:3000/reset-password"
     config_mod.PASSWORD_RESET_EXPIRE_MINUTES = 30
     sys.modules["app.config"] = config_mod
-    setattr(app_pkg, "config", config_mod)
+    attr_name = "config"
+    setattr(app_pkg, attr_name, config_mod)
 
     import sqlalchemy
     import sqlalchemy.dialects.postgresql as pg
