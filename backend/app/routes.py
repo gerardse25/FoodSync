@@ -11,6 +11,8 @@ import app.auth
 import app.models
 import app.schemas
 from app.database import get_db
+from app.home_models import Home, HomeMembership
+from app.inventory_models import InventoryProduct, InventoryProductOwner
 from app.validation import contains_control_characters, contains_escape_sequences
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -862,13 +864,39 @@ def delete_account(
     current=Depends(app.auth.get_current_user),
     db: Session = Depends(get_db),
 ):
-    from app.home_models import Home, HomeMembership
-
     user, _session = current
     now = datetime.utcnow()
     result_code = "ACCOUNT_DELETED_NO_HOME"
 
-    # ── Gestió de llar ────────────────────────────────────────
+    # ── 1. GESTIÓ DE PRODUCTES PRIVATS (VERSIÓ SIMPLICADA) ──────────
+
+    # 1.1 Obtenim directament els IDs dels productes on l'usuari és owner
+    product_ids_tuples = (
+        db.query(InventoryProductOwner.id_inventari)
+        .filter(InventoryProductOwner.user_id == user.id)
+        .all()
+    )
+
+    # Convertim la llista de tuples [(id1,), (id2,)] en una llista plana [id1, id2]
+    product_ids = [p[0] for p in product_ids_tuples]
+
+    if product_ids:
+        # 1.2 Actualitzem només els que són privats dins d'aquesta llista
+        db.query(InventoryProduct).filter(
+            InventoryProduct.id_inventari.in_(product_ids),
+            InventoryProduct.es_privat,
+        ).update({"es_privat": False}, synchronize_session=False)
+
+        # Eliminar ownership
+        db.query(InventoryProductOwner).filter(
+            InventoryProductOwner.id_inventari.in_(product_ids),
+            InventoryProductOwner.user_id == user.id,
+        ).delete(synchronize_session=False)
+
+        # Forcem l'escriptura a la base de dades
+        db.flush()
+
+    # ── 2. Gestió de llar (El teu codi existent...) ──────────────
     membership = (
         db.query(HomeMembership)
         .filter(HomeMembership.user_id == user.id, HomeMembership.is_active)
@@ -896,7 +924,6 @@ def delete_account(
             membership.left_at = now
 
             if other_memberships:
-                # Transferir propietat al membre més antic
                 new_owner = other_memberships[0]
                 new_owner.role = "owner"
                 if home:
@@ -904,35 +931,30 @@ def delete_account(
                     home.updated_at = now
                 result_code = "ACCOUNT_DELETED_AND_OWNER_TRANSFERRED"
             else:
-                # Dissoldre la llar
                 if home:
                     home.is_active = False
                     home.updated_at = now
                 result_code = "ACCOUNT_DELETED_AND_HOME_DISSOLVED"
         else:
-            # Membre normal
             membership.is_active = False
             membership.left_at = now
             if home:
                 home.updated_at = now
             result_code = "ACCOUNT_DELETED_AND_REMOVED_FROM_HOME"
 
-    # ── Desactivar compte ─────────────────────────────────────
+    # ── 3. Desactivar compte ──────────────────
     user.is_active = False
-    old_email_normalized = user.email_normalized
-    user.email_normalized = f"deleted::{user.id}::{old_email_normalized}"
+    user.email_normalized = f"deleted::{user.id}::{user.email_normalized}"
     user.email = f"deleted::{user.id}@foodsync.local"
     user.username = f"deleted_{str(user.id)[:8]}"
 
-    sessions = (
-        db.query(app.models.Session)
-        .filter(app.models.Session.user_id == user.id, app.models.Session.is_active)
-        .all()
-    )
-    for session in sessions:
-        session.is_active = False
+    # Tancar sessions (Molt important per als tests)
+    db.query(app.models.Session).filter(
+        app.models.Session.user_id == user.id, app.models.Session.is_active
+    ).update({"is_active": False}, synchronize_session=False)
 
     db.commit()
+    # Expirem tot per obligar el test a rellegir de la base de dades
     db.expire_all()
 
     return JSONResponse(
