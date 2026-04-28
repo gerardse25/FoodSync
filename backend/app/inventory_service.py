@@ -28,6 +28,7 @@ from app.inventory_models import (
     InventoryProductOwner,
 )
 
+
 @dataclass
 class InventoryFilterParams:
     """
