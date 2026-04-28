@@ -15,7 +15,6 @@ from app.home_models import Home, HomeMembership
 from app.inventory_models import InventoryProduct, InventoryProductOwner
 from app.validation import contains_control_characters, contains_escape_sequences
 
-
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 
