@@ -17,11 +17,16 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from typing import Optional
-
-from sqlalchemy.orm import Query
 from uuid import UUID
 
-from app.inventory_models import CatalogProduct, Category, InventoryProduct, InventoryProductOwner
+from sqlalchemy.orm import Query
+
+from app.inventory_models import (
+    CatalogProduct,
+    Category,
+    InventoryProduct,
+    InventoryProductOwner,
+)
 
 @dataclass
 class InventoryFilterParams:
@@ -82,7 +87,11 @@ def apply_active_filters(
         #     )
         # )
         try:
-            owner_uuid = UUID(filters.owner_user_id) if isinstance(filters.owner_user_id, str) else filters.owner_user_id
+            owner_uuid = (
+                UUID(filters.owner_user_id)
+                if isinstance(filters.owner_user_id, str)
+                else filters.owner_user_id
+            )
             query = query.join(InventoryProductOwner).filter(
                 InventoryProductOwner.user_id == owner_uuid
             )

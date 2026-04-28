@@ -17,10 +17,10 @@ from app.inventory_models import (
     InventoryProduct,
     InventoryProductOwner,
 )
+from app.inventory_service import InventoryFilterParams, get_filtered_products
 from app.models import User
 from app.product_schemas import CATEGORY_LABELS_CA, ProductCategory
 from app.validation import contains_control_characters, contains_escape_sequences
-from app.inventory_service import InventoryFilterParams, get_filtered_products
 
 router = APIRouter(prefix="/inventory", tags=["inventory"])
 
@@ -239,15 +239,18 @@ def get_inventory(
         try:
             target_owner_uuid = UUID(owner_user_id)
         except (ValueError, AttributeError):
-            return _json_error("L'ID del propietari no té un format vàlid.", 400, "INVALID_USER_ID")
+            return _json_error(
+                "L'ID del propietari no té un format vàlid.", 400, "INVALID_USER_ID"
+            )
 
-        # 2. Validar que l'owner del filtre pertanyi a la llar (resol el test_filter_rejects_owner_user_not_in_home)
+        # 2. Validar que l'owner del filtre pertanyi a la llar
+        # (resol el test_filter_rejects_owner_user_not_in_home)
         owner_membership = (
             db.query(HomeMembership)
             .filter(
                 HomeMembership.home_id == home_id,
                 HomeMembership.user_id == target_owner_uuid,
-                HomeMembership.is_active == True
+                HomeMembership.is_active,
             )
             .first()
         )
@@ -337,11 +340,15 @@ def get_inventory_categories(
     if not membership:
         return _json_error("No pertanys a cap llar activa.", 404, "NOT_IN_HOME")
 
-    # Construïm la query base: categories que tenen productes a l'inventari d'aquesta llar
+    # Construïm la query base: categories que tenen productes a l'inventari
+    # d'aquesta llar
     query = (
         db.query(Category)
         .join(CatalogProduct, CatalogProduct.id_categoria == Category.id_categoria)
-        .join(InventoryProduct, InventoryProduct.id_producte_cataleg == CatalogProduct.id_producte_cataleg)
+        .join(
+            InventoryProduct,
+            InventoryProduct.id_producte_cataleg == CatalogProduct.id_producte_cataleg,
+        )
         .filter(InventoryProduct.id_llar == membership.home_id)
     )
 
@@ -477,14 +484,16 @@ def create_inventory_product_manual(
     # Agafem els IDs del payload (data.owner_user_ids)
     requested_owners = getattr(data, "owner_user_ids", [])
     
-    # EXECUTEM LA VALIDACIÓ: Si un owner no és de la llar, owner_error tindrà un JSONResponse
+    # EXECUTEM LA VALIDACIÓ: Si un owner no és de la llar, owner_error tindrà un
+    # JSONResponse
     owner_ids, owner_error = _validate_owner_list(home.id, requested_owners, db)
     if owner_error:
         return owner_error # Atura l'execució i retorna 400 (Arrecla els tests 2 i 3)
 
     # 2. Normalització i Categoria
     name, error = _normalize_product_name(data.nom)
-    if error: return error
+    if error:
+        return error
     category_row = _get_or_create_category_row(data.categoria, db)
 
     # 3. Creació física del producte
@@ -668,12 +677,14 @@ def confirm_and_add_barcode_product(
     resolved_name = None
     if data.nom is not None and data.nom.strip():
         resolved_name, error = _normalize_product_name(data.nom)
-        if error: return error
+        if error:
+            return error
     elif catalog_product is not None and catalog_product.nom:
         resolved_name = catalog_product.nom
     elif off_data and off_data.get("found") and off_data.get("name"):
         resolved_name, error = _normalize_product_name(off_data.get("name"))
-        if error: return error
+        if error:
+            return error
 
     if not resolved_name:
         return _json_error("El nom és obligatori.", 422, "NAME_REQUIRED")
@@ -878,10 +889,13 @@ def _validate_owner_list(home_id, owner_user_ids, db: Session):
         )
         
         if not membership:
-            # Segons el log d'errors, el test espera un codi de negoci "OWNER_NOT_IN_HOME"
+            # Segons el log d'errors, el test espera un codi de negoci
+            # "OWNER_NOT_IN_HOME"
             # Utilitzem el helper _json_error definit a inventory_routes.py
             return None, _json_error(
-                detail=f"L'usuari amb ID {owner_id} no és un membre actiu d'aquesta llar.",
+                detail=(
+                    f"L'usuari amb ID {owner_id} no és un membre actiu d'aquesta llar."
+                ),
                 status_code=400,
                 code="OWNER_NOT_IN_HOME"
             )
