@@ -1,6 +1,7 @@
 import pytest
 
-INVENTORY_OWNERS_ENDPOINT= "/inventory/owners"
+INVENTORY_OWNERS_ENDPOINT = "/inventory/owners"
+
 
 def modify_owner_product_request(client, product_id, owner_ids, headers):
     return client.patch(
@@ -12,9 +13,11 @@ def modify_owner_product_request(client, product_id, owner_ids, headers):
         headers=headers,
     )
 
-def get_product_by_name(products, target_name):
-    return next((product for product in products if product["name"] == target_name), None)
 
+def get_product_by_name(products, target_name):
+    return next(
+        (product for product in products if product["name"] == target_name), None
+    )
 
 
 def assert_owner_state(after_product, expected_owner_ids):
@@ -46,8 +49,12 @@ def test_user_can_assign_owner_to_public_product(
 ):
     headers = shared_home_with_products[target_headers]
     owner_user_ids = [shared_home_with_products[who]["user"]["id"]]
-    target_product_id = shared_home_with_products["products"]["public_product"]["db"]["id"]
-    target_product_name = shared_home_with_products["products"]["public_product"]["db"]["name"]
+    target_product_id = shared_home_with_products["products"]["public_product"]["db"][
+        "id"
+    ]
+    target_product_name = shared_home_with_products["products"]["public_product"]["db"][
+        "name"
+    ]
     home_id = shared_home_with_products["home_id"]
 
     before_products = list_home_products_db(home_id)
@@ -58,7 +65,9 @@ def test_user_can_assign_owner_to_public_product(
     assert before_product["owner"] is None
     assert before_product["is_private"] is False
 
-    response = modify_owner_product_request(client, target_product_id, owner_user_ids, headers)
+    response = modify_owner_product_request(
+        client, target_product_id, owner_user_ids, headers
+    )
     assert response.status_code == 200, response.text
 
     body = response.json()
@@ -76,11 +85,17 @@ def test_user_can_assign_another_user_as_owner_to_public_product(
 ):
     headers = shared_home_with_products["owner_headers"]
     owner_user_ids = [shared_home_with_products["member1"]["user"]["id"]]
-    target_product_id = shared_home_with_products["products"]["public_product"]["db"]["id"]
-    target_product_name = shared_home_with_products["products"]["public_product"]["db"]["name"]
+    target_product_id = shared_home_with_products["products"]["public_product"]["db"][
+        "id"
+    ]
+    target_product_name = shared_home_with_products["products"]["public_product"]["db"][
+        "name"
+    ]
     home_id = shared_home_with_products["home_id"]
 
-    response = modify_owner_product_request(client, target_product_id, owner_user_ids, headers)
+    response = modify_owner_product_request(
+        client, target_product_id, owner_user_ids, headers
+    )
     assert response.status_code == 200, response.text
 
     body = response.json()
@@ -100,11 +115,17 @@ def test_user_can_assign_another_user_as_owner_to_private_product(
     owner_id = shared_home_with_products["owner"]["user"]["id"]
     member1_id = shared_home_with_products["member1"]["user"]["id"]
 
-    target_product_id = shared_home_with_products["products"]["owner_private"]["db"]["id"]
-    target_product_name = shared_home_with_products["products"]["owner_private"]["db"]["name"]
+    target_product_id = shared_home_with_products["products"]["owner_private"]["db"][
+        "id"
+    ]
+    target_product_name = shared_home_with_products["products"]["owner_private"]["db"][
+        "name"
+    ]
     home_id = shared_home_with_products["home_id"]
 
-    response = modify_owner_product_request(client, target_product_id, [owner_id, member1_id], headers)
+    response = modify_owner_product_request(
+        client, target_product_id, [owner_id, member1_id], headers
+    )
     assert response.status_code == 200, response.text
 
     body = response.json()
@@ -123,8 +144,12 @@ def test_owner_can_remove_self_as_owner_and_leave_other_owner(
     headers = shared_home_with_products["owner_headers"]
     home_id = shared_home_with_products["home_id"]
 
-    target_product_id = shared_home_with_products["products"]["owner_private"]["db"]["id"]
-    target_product_name = shared_home_with_products["products"]["owner_private"]["db"]["name"]
+    target_product_id = shared_home_with_products["products"]["owner_private"]["db"][
+        "id"
+    ]
+    target_product_name = shared_home_with_products["products"]["owner_private"]["db"][
+        "name"
+    ]
 
     member1_id = shared_home_with_products["member1"]["user"]["id"]
 
@@ -152,8 +177,12 @@ def test_product_with_two_owners_can_be_reduced_to_one_owner(
     headers = shared_home_with_products["owner_headers"]
     home_id = shared_home_with_products["home_id"]
 
-    target_product_id = shared_home_with_products["products"]["public_product"]["db"]["id"]
-    target_product_name = shared_home_with_products["products"]["public_product"]["db"]["name"]
+    target_product_id = shared_home_with_products["products"]["public_product"]["db"][
+        "id"
+    ]
+    target_product_name = shared_home_with_products["products"]["public_product"]["db"][
+        "name"
+    ]
 
     owner_id = shared_home_with_products["owner"]["user"]["id"]
     member1_id = shared_home_with_products["member1"]["user"]["id"]
@@ -191,8 +220,12 @@ def test_current_owner_can_replace_self_with_new_owner_in_single_request(
     headers = shared_home_with_products["owner_headers"]
     home_id = shared_home_with_products["home_id"]
 
-    target_product_id = shared_home_with_products["products"]["owner_private"]["db"]["id"]
-    target_product_name = shared_home_with_products["products"]["owner_private"]["db"]["name"]
+    target_product_id = shared_home_with_products["products"]["owner_private"]["db"][
+        "id"
+    ]
+    target_product_name = shared_home_with_products["products"]["owner_private"]["db"][
+        "name"
+    ]
 
     current_owner_id = shared_home_with_products["owner"]["user"]["id"]
     new_owner_id = shared_home_with_products["member2"]["user"]["id"]
@@ -229,8 +262,12 @@ def test_old_owner_cannot_modify_product_after_being_replaced(
     old_owner_headers = shared_home_with_products["owner_headers"]
     home_id = shared_home_with_products["home_id"]
 
-    target_product_id = shared_home_with_products["products"]["owner_private"]["db"]["id"]
-    target_product_name = shared_home_with_products["products"]["owner_private"]["db"]["name"]
+    target_product_id = shared_home_with_products["products"]["owner_private"]["db"][
+        "id"
+    ]
+    target_product_name = shared_home_with_products["products"]["owner_private"]["db"][
+        "name"
+    ]
 
     old_owner_id = shared_home_with_products["owner"]["user"]["id"]
     new_owner_id = shared_home_with_products["member2"]["user"]["id"]
@@ -268,8 +305,12 @@ def test_non_owner_cannot_add_another_owner_to_private_product(
     headers = shared_home_with_products["member2_headers"]
     home_id = shared_home_with_products["home_id"]
 
-    target_product_id = shared_home_with_products["products"]["owner_private"]["db"]["id"]
-    target_product_name = shared_home_with_products["products"]["owner_private"]["db"]["name"]
+    target_product_id = shared_home_with_products["products"]["owner_private"]["db"][
+        "id"
+    ]
+    target_product_name = shared_home_with_products["products"]["owner_private"]["db"][
+        "name"
+    ]
 
     owner_id = shared_home_with_products["owner"]["user"]["id"]
     member2_id = shared_home_with_products["member2"]["user"]["id"]
@@ -301,7 +342,9 @@ def test_unauthenticated_user_cannot_update_product_owners(
     shared_home_with_products,
     headers,
 ):
-    target_product_id = shared_home_with_products["products"]["public_product"]["db"]["id"]
+    target_product_id = shared_home_with_products["products"]["public_product"]["db"][
+        "id"
+    ]
     owner_id = shared_home_with_products["owner"]["user"]["id"]
 
     response = modify_owner_product_request(
@@ -321,7 +364,9 @@ def test_non_member_cannot_update_product_owners(
     shared_home_with_products,
     outsider_user,
 ):
-    target_product_id = shared_home_with_products["products"]["public_product"]["db"]["id"]
+    target_product_id = shared_home_with_products["products"]["public_product"]["db"][
+        "id"
+    ]
     owner_id = shared_home_with_products["owner"]["user"]["id"]
 
     response = modify_owner_product_request(
@@ -342,7 +387,9 @@ def test_cannot_assign_non_member_as_owner(
     outsider_user,
 ):
     headers = shared_home_with_products["owner_headers"]
-    target_product_id = shared_home_with_products["products"]["public_product"]["db"]["id"]
+    target_product_id = shared_home_with_products["products"]["public_product"]["db"][
+        "id"
+    ]
 
     response = modify_owner_product_request(
         client,
@@ -402,8 +449,12 @@ def test_owner_can_make_private_product_public_by_removing_all_owners(
     headers = shared_home_with_products["owner_headers"]
     home_id = shared_home_with_products["home_id"]
 
-    target_product_id = shared_home_with_products["products"]["owner_private"]["db"]["id"]
-    target_product_name = shared_home_with_products["products"]["owner_private"]["db"]["name"]
+    target_product_id = shared_home_with_products["products"]["owner_private"]["db"][
+        "id"
+    ]
+    target_product_name = shared_home_with_products["products"]["owner_private"]["db"][
+        "name"
+    ]
 
     response = modify_owner_product_request(
         client,
@@ -424,6 +475,7 @@ def test_owner_can_make_private_product_public_by_removing_all_owners(
     assert after_product["owner"] is None
     assert after_product["is_private"] is False
 
+
 def test_owner_updating_product_owners_with_duplicate_ids_has_defined_behavior(
     client,
     shared_home_with_products,
@@ -432,8 +484,12 @@ def test_owner_updating_product_owners_with_duplicate_ids_has_defined_behavior(
     headers = shared_home_with_products["owner_headers"]
     home_id = shared_home_with_products["home_id"]
 
-    target_product_id = shared_home_with_products["products"]["public_product"]["db"]["id"]
-    target_product_name = shared_home_with_products["products"]["public_product"]["db"]["name"]
+    target_product_id = shared_home_with_products["products"]["public_product"]["db"][
+        "id"
+    ]
+    target_product_name = shared_home_with_products["products"]["public_product"]["db"][
+        "name"
+    ]
     owner_id = shared_home_with_products["owner"]["user"]["id"]
 
     response = modify_owner_product_request(
@@ -450,7 +506,11 @@ def test_owner_updating_product_owners_with_duplicate_ids_has_defined_behavior(
     # Si backend rechaza duplicados:
     if response.status_code in (400, 422):
         body = response.json()
-        assert body["code"] in ("DUPLICATE_OWNER_IDS", "OWNER_IDS_INVALID", "OWNER_NOT_IN_HOME")
+        assert body["code"] in (
+            "DUPLICATE_OWNER_IDS",
+            "OWNER_IDS_INVALID",
+            "OWNER_NOT_IN_HOME",
+        )
         assert after_product["owner_user_ids"] == []
 
     # Si backend deduplica automáticamente:
@@ -463,7 +523,9 @@ def test_owner_updating_product_owners_with_duplicate_ids_has_defined_behavior(
         assert after_product["is_private"] is True
 
     else:
-        pytest.fail(f"Unexpected status code for duplicate owner ids: {response.status_code} - {response.text}")
+        pytest.fail(
+            f"Unexpected status code for duplicate owner ids: {response.status_code} - {response.text}"
+        )
 
 
 def test_setting_empty_owner_list_on_already_public_product_keeps_it_public(
@@ -474,8 +536,12 @@ def test_setting_empty_owner_list_on_already_public_product_keeps_it_public(
     headers = shared_home_with_products["owner_headers"]
     home_id = shared_home_with_products["home_id"]
 
-    target_product_id = shared_home_with_products["products"]["public_product"]["db"]["id"]
-    target_product_name = shared_home_with_products["products"]["public_product"]["db"]["name"]
+    target_product_id = shared_home_with_products["products"]["public_product"]["db"][
+        "id"
+    ]
+    target_product_name = shared_home_with_products["products"]["public_product"]["db"][
+        "name"
+    ]
 
     before_products = list_home_products_db(home_id)
     before_product = get_product_by_name(before_products, target_product_name)

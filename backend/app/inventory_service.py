@@ -80,7 +80,7 @@ def apply_active_filters(
 
     if filters.max_quantity is not None:
         query = query.filter(InventoryProduct.quantitat <= filters.max_quantity)
-    
+
     if filters.owner_user_id:
         # query = query.filter(
         #     InventoryProduct.owners.any(

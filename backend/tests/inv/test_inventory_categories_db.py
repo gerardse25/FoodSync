@@ -203,7 +203,9 @@ def test_home_categories_search_with_no_results_returns_empty_list(
 ):
     headers = shared_home_with_products["owner_headers"]
 
-    response = client.get(f"{DB_CATEGORIES_ENDPOINT}?q=this-category-does-not-exist", headers=headers)
+    response = client.get(
+        f"{DB_CATEGORIES_ENDPOINT}?q=this-category-does-not-exist", headers=headers
+    )
     assert response.status_code == 200, response.text
 
     body = response.json()

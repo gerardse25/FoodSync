@@ -60,7 +60,9 @@ def app_modules(tmp_path, monkeypatch):
             kwargs.setdefault("connect_args", {"check_same_thread": False})
         return real_create_engine(url, *args, **kwargs)
 
-    monkeypatch.setattr(sqlalchemy, "create_engine", create_engine_for_tests, raising=True)
+    monkeypatch.setattr(
+        sqlalchemy, "create_engine", create_engine_for_tests, raising=True
+    )
 
     database = importlib.import_module("app.database")
     models = importlib.import_module("app.models")
@@ -136,7 +138,12 @@ def unsafe_client(app_modules):
 def make_user(client):
     created = []
 
-    def _make_user(*, username: str | None = None, email: str | None = None, password: str = "Passw0rd"):
+    def _make_user(
+        *,
+        username: str | None = None,
+        email: str | None = None,
+        password: str = "Passw0rd",
+    ):
         idx = len(created) + 1
         username = username or f"user{idx:02d}"
         email = email or f"user{idx:02d}@example.com"
@@ -210,7 +217,9 @@ def outsider_user(make_user):
 @pytest.fixture
 def create_home_api(client):
     def _create_home(user_ctx, name: str = "My Home"):
-        response = client.post("/home/", json={"name": name}, headers=user_ctx["headers"])
+        response = client.post(
+            "/home/", json={"name": name}, headers=user_ctx["headers"]
+        )
         return response
 
     return _create_home
@@ -230,7 +239,9 @@ def join_home_api(client):
 
 @pytest.fixture
 def owner_home(client, owner_user):
-    response = client.post("/home/", json={"name": "Shared Home"}, headers=owner_user["headers"])
+    response = client.post(
+        "/home/", json={"name": "Shared Home"}, headers=owner_user["headers"]
+    )
     assert response.status_code == 201, response.text
     body = response.json()
     home = body["home"]
@@ -277,7 +288,9 @@ def shared_home_setup(client, owner_home, member1_user, member2_user):
 @pytest.fixture
 def private_home_setup(client, make_user):
     user = make_user(username="private01", email="private01@example.com")
-    response = client.post("/home/", json={"name": "Private Home"}, headers=user["headers"])
+    response = client.post(
+        "/home/", json={"name": "Private Home"}, headers=user["headers"]
+    )
     assert response.status_code == 201, response.text
     body = response.json()
     return {
@@ -353,7 +366,9 @@ def home_capacity_setup(client, owner_home, make_user):
 
 
 def parse_member_roles(home_payload: dict) -> dict[str, str]:
-    return {member["username"]: member["role"] for member in home_payload.get("members", [])}
+    return {
+        member["username"]: member["role"] for member in home_payload.get("members", [])
+    }
 
 
 def _normalize_owner_fields(owner_ids):
@@ -371,6 +386,7 @@ def _normalize_owner_fields(owner_ids):
         "owner": single_owner,
         "is_private": bool(normalized_ids),
     }
+
 
 @pytest.fixture
 def make_product_data():
@@ -429,13 +445,21 @@ def seed_product_db(client):
     ):
         db = SessionLocal()
         try:
-            home_uuid = uuid.UUID(str(home_id)) if not isinstance(home_id, uuid.UUID) else home_id
+            home_uuid = (
+                uuid.UUID(str(home_id))
+                if not isinstance(home_id, uuid.UUID)
+                else home_id
+            )
             creator_uuid = uuid.UUID(created_by_ctx["user"]["id"])
 
             owner_uuids = []
             if owner_user_ids:
                 owner_uuids = [
-                    owner_id if isinstance(owner_id, uuid.UUID) else uuid.UUID(str(owner_id))
+                    (
+                        owner_id
+                        if isinstance(owner_id, uuid.UUID)
+                        else uuid.UUID(str(owner_id))
+                    )
                     for owner_id in owner_user_ids
                 ]
 
@@ -470,20 +494,34 @@ def seed_product_db(client):
                     "category": product.category,
                     "quantity": product.quantity,
                     "price": str(product.price),
-                    "purchase_date": product.purchase_date.isoformat() if product.purchase_date else None,
-                    "expiration_date": product.expiration_date.isoformat() if product.expiration_date else None,
-                    **_normalize_owner_fields([product.owner_user_id] if product.owner_user_id else []),
+                    "purchase_date": (
+                        product.purchase_date.isoformat()
+                        if product.purchase_date
+                        else None
+                    ),
+                    "expiration_date": (
+                        product.expiration_date.isoformat()
+                        if product.expiration_date
+                        else None
+                    ),
+                    **_normalize_owner_fields(
+                        [product.owner_user_id] if product.owner_user_id else []
+                    ),
                 }
 
             # Ramas con inventory_models (owners múltiples)
             inventory_models = app_modules["inventory_models"]
             if inventory_models is None:
-                raise RuntimeError("La rama no tiene ni product_models ni inventory_models")
+                raise RuntimeError(
+                    "La rama no tiene ni product_models ni inventory_models"
+                )
 
             Category = inventory_models.Category
             CatalogProduct = inventory_models.CatalogProduct
             InventoryProduct = inventory_models.InventoryProduct
-            InventoryProductOwner = getattr(inventory_models, "InventoryProductOwner", None)
+            InventoryProductOwner = getattr(
+                inventory_models, "InventoryProductOwner", None
+            )
 
             category_row = db.query(Category).filter(Category.nom == category).first()
             if not category_row:
@@ -536,7 +574,11 @@ def seed_product_db(client):
                 "quantity": inv_product.quantitat,
                 "price": str(price),
                 "purchase_date": purchase_date.isoformat() if purchase_date else None,
-                "expiration_date": inv_product.data_caducitat.isoformat() if inv_product.data_caducitat else None,
+                "expiration_date": (
+                    inv_product.data_caducitat.isoformat()
+                    if inv_product.data_caducitat
+                    else None
+                ),
                 **_normalize_owner_fields(owner_uuids),
             }
         finally:
@@ -553,12 +595,20 @@ def list_home_products_db(client):
     def _list_home_products_db(home_id: str | uuid.UUID):
         db = SessionLocal()
         try:
-            home_uuid = uuid.UUID(str(home_id)) if not isinstance(home_id, uuid.UUID) else home_id
+            home_uuid = (
+                uuid.UUID(str(home_id))
+                if not isinstance(home_id, uuid.UUID)
+                else home_id
+            )
 
             # Rama con product_models (owner único)
             if app_modules["product_models"] is not None:
                 Product = app_modules["product_models"].Product
-                rows = db.query(Product).filter(Product.home_id == home_uuid, Product.is_active.is_(True)).all()
+                rows = (
+                    db.query(Product)
+                    .filter(Product.home_id == home_uuid, Product.is_active.is_(True))
+                    .all()
+                )
 
                 return [
                     {
@@ -568,9 +618,17 @@ def list_home_products_db(client):
                         "category": row.category,
                         "quantity": row.quantity,
                         "price": str(row.price),
-                        "purchase_date": row.purchase_date.isoformat() if row.purchase_date else None,
-                        "expiration_date": row.expiration_date.isoformat() if row.expiration_date else None,
-                        **_normalize_owner_fields([row.owner_user_id] if row.owner_user_id else []),
+                        "purchase_date": (
+                            row.purchase_date.isoformat() if row.purchase_date else None
+                        ),
+                        "expiration_date": (
+                            row.expiration_date.isoformat()
+                            if row.expiration_date
+                            else None
+                        ),
+                        **_normalize_owner_fields(
+                            [row.owner_user_id] if row.owner_user_id else []
+                        ),
                     }
                     for row in rows
                 ]
@@ -580,12 +638,20 @@ def list_home_products_db(client):
             Category = inventory_models.Category
             CatalogProduct = inventory_models.CatalogProduct
             InventoryProduct = inventory_models.InventoryProduct
-            InventoryProductOwner = getattr(inventory_models, "InventoryProductOwner", None)
+            InventoryProductOwner = getattr(
+                inventory_models, "InventoryProductOwner", None
+            )
 
             rows = (
                 db.query(InventoryProduct, CatalogProduct, Category)
-                .join(CatalogProduct, InventoryProduct.id_producte_cataleg == CatalogProduct.id_producte_cataleg)
-                .outerjoin(Category, CatalogProduct.id_categoria == Category.id_categoria)
+                .join(
+                    CatalogProduct,
+                    InventoryProduct.id_producte_cataleg
+                    == CatalogProduct.id_producte_cataleg,
+                )
+                .outerjoin(
+                    Category, CatalogProduct.id_categoria == Category.id_categoria
+                )
                 .filter(InventoryProduct.id_llar == home_uuid)
                 .all()
             )
@@ -597,7 +663,9 @@ def list_home_products_db(client):
                 if InventoryProductOwner is not None:
                     owner_rows = (
                         db.query(InventoryProductOwner)
-                        .filter(InventoryProductOwner.id_inventari == inv_row.id_inventari)
+                        .filter(
+                            InventoryProductOwner.id_inventari == inv_row.id_inventari
+                        )
                         .all()
                     )
                     owner_user_ids = [owner_row.user_id for owner_row in owner_rows]
@@ -609,9 +677,21 @@ def list_home_products_db(client):
                         "name": catalog_row.nom,
                         "category": category_row.nom if category_row else None,
                         "quantity": inv_row.quantitat,
-                        "price": str(inv_row.preu) if hasattr(inv_row, "preu") and inv_row.preu is not None else None,
-                        "purchase_date": inv_row.data_compra.isoformat() if hasattr(inv_row, "data_compra") and inv_row.data_compra else None,
-                        "expiration_date": inv_row.data_caducitat.isoformat() if inv_row.data_caducitat else None,
+                        "price": (
+                            str(inv_row.preu)
+                            if hasattr(inv_row, "preu") and inv_row.preu is not None
+                            else None
+                        ),
+                        "purchase_date": (
+                            inv_row.data_compra.isoformat()
+                            if hasattr(inv_row, "data_compra") and inv_row.data_compra
+                            else None
+                        ),
+                        "expiration_date": (
+                            inv_row.data_caducitat.isoformat()
+                            if inv_row.data_caducitat
+                            else None
+                        ),
                         **_normalize_owner_fields(owner_user_ids),
                     }
                 )
@@ -638,43 +718,43 @@ def shared_home_with_products(shared_home_setup, make_product_data, seed_product
     owner_private = seed_product_db(
         home_id=shared_home_setup["home_id"],
         created_by_ctx=owner,
-        **{ 
+        **{
             k: v
             for k, v in owner_private_payload.items()
             if k not in {"is_private", "owner_user_id", "owner"}
-        }
+        },
     )
 
     member1_private_payload = make_product_data(
-    name="member1_private_product",
-    category="HARD_CHEESE",
-    quantity=5,
-    owner_user_ids=[member1["user"]["id"]],
+        name="member1_private_product",
+        category="HARD_CHEESE",
+        quantity=5,
+        owner_user_ids=[member1["user"]["id"]],
     )
     member1_private = seed_product_db(
         home_id=shared_home_setup["home_id"],
         created_by_ctx=member1,
-        **{ 
+        **{
             k: v
             for k, v in member1_private_payload.items()
             if k not in {"is_private", "owner_user_id", "owner"}
-        }
+        },
     )
 
     public_payload = make_product_data(
-    name="shared_public_product",
-    category="FRESH_VEGETABLES",
-    quantity=3,
-    owner_user_ids=[],
+        name="shared_public_product",
+        category="FRESH_VEGETABLES",
+        quantity=3,
+        owner_user_ids=[],
     )
     public_product = seed_product_db(
         home_id=shared_home_setup["home_id"],
         created_by_ctx=owner,
-        **{ 
+        **{
             k: v
             for k, v in public_payload.items()
             if k not in {"is_private", "owner_user_id", "owner"}
-        }
+        },
     )
 
     return {
@@ -688,30 +768,35 @@ def shared_home_with_products(shared_home_setup, make_product_data, seed_product
         "member2_headers": shared_home_setup["member2_headers"],
         "products": {
             "owner_private": {"payload": owner_private_payload, "db": owner_private},
-            "member1_private": {"payload": member1_private_payload, "db": member1_private},
+            "member1_private": {
+                "payload": member1_private_payload,
+                "db": member1_private,
+            },
             "public_product": {"payload": public_payload, "db": public_product},
         },
     }
 
 
 @pytest.fixture
-def shared_home_with_single_product(shared_home_setup, make_product_data, seed_product_db):
+def shared_home_with_single_product(
+    shared_home_setup, make_product_data, seed_product_db
+):
     owner = shared_home_setup["owner"]
 
     only_payload = make_product_data(
-    name="only_product",
-    category="MILK",
-    quantity=1,
-    owner_user_ids=[],
+        name="only_product",
+        category="MILK",
+        quantity=1,
+        owner_user_ids=[],
     )
     only_product = seed_product_db(
         home_id=shared_home_setup["home_id"],
         created_by_ctx=owner,
-        **{ 
+        **{
             k: v
             for k, v in only_payload.items()
             if k not in {"is_private", "owner_user_id", "owner"}
-        }
+        },
     )
 
     return {

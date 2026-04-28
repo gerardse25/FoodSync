@@ -18,8 +18,12 @@ def delete_product_request(client, product_id, headers):
 
 def test_can_view_detail_of_public_product(client, shared_home_with_products):
     headers = shared_home_with_products["owner_headers"]
-    target_product_id = shared_home_with_products["products"]["public_product"]["db"]["id"]
-    target_product_name = shared_home_with_products["products"]["public_product"]["db"]["name"]
+    target_product_id = shared_home_with_products["products"]["public_product"]["db"][
+        "id"
+    ]
+    target_product_name = shared_home_with_products["products"]["public_product"]["db"][
+        "name"
+    ]
 
     response = get_product_detail_request(client, target_product_id, headers)
     assert response.status_code == 200, response.text
@@ -41,8 +45,12 @@ def test_can_view_detail_of_private_product_with_single_owner(
     shared_home_with_products,
 ):
     headers = shared_home_with_products["owner_headers"]
-    target_product_id = shared_home_with_products["products"]["owner_private"]["db"]["id"]
-    target_product_name = shared_home_with_products["products"]["owner_private"]["db"]["name"]
+    target_product_id = shared_home_with_products["products"]["owner_private"]["db"][
+        "id"
+    ]
+    target_product_name = shared_home_with_products["products"]["owner_private"]["db"][
+        "name"
+    ]
     owner_id = shared_home_with_products["owner"]["user"]["id"]
     owner_name = shared_home_with_products["owner"]["user"]["username"]
 
@@ -62,13 +70,18 @@ def test_can_view_detail_of_private_product_with_single_owner(
     assert product["propietaris"][0]["id_usuari"] == owner_id
     assert product["propietaris"][0]["nom"] == owner_name
 
+
 def test_user_can_view_detail_of_private_product_with_single_owner(
     client,
     shared_home_with_products,
 ):
     headers = shared_home_with_products["member2_headers"]
-    target_product_id = shared_home_with_products["products"]["owner_private"]["db"]["id"]
-    target_product_name = shared_home_with_products["products"]["owner_private"]["db"]["name"]
+    target_product_id = shared_home_with_products["products"]["owner_private"]["db"][
+        "id"
+    ]
+    target_product_name = shared_home_with_products["products"]["owner_private"]["db"][
+        "name"
+    ]
     owner_id = shared_home_with_products["owner"]["user"]["id"]
     owner_name = shared_home_with_products["owner"]["user"]["username"]
 
@@ -124,7 +137,9 @@ def test_can_view_detail_of_product_with_multiple_owners(
     assert product["es_privat"] is True
     assert product["estat_stock"] == "En estoc"
 
-    owner_pairs = {(owner["id_usuari"], owner["nom"]) for owner in product["propietaris"]}
+    owner_pairs = {
+        (owner["id_usuari"], owner["nom"]) for owner in product["propietaris"]
+    }
     assert owner_pairs == {
         (owner_id, owner_name),
         (member1_id, member1_name),
@@ -136,7 +151,9 @@ def test_detail_response_includes_expected_fields(
     shared_home_with_products,
 ):
     headers = shared_home_with_products["member1_headers"]
-    target_product_id = shared_home_with_products["products"]["public_product"]["db"]["id"]
+    target_product_id = shared_home_with_products["products"]["public_product"]["db"][
+        "id"
+    ]
 
     response = get_product_detail_request(client, target_product_id, headers)
     assert response.status_code == 200, response.text
@@ -193,10 +210,16 @@ def test_detail_marks_product_as_out_of_stock_when_quantity_is_zero(
     assert body["producte"]["estat_stock"] == "Exhaurit"
 
 
-def test_non_member_without_home_cannot_view_product_detail(client, outsider_user, shared_home_with_products):
-    target_product_id = shared_home_with_products["products"]["public_product"]["db"]["id"]
+def test_non_member_without_home_cannot_view_product_detail(
+    client, outsider_user, shared_home_with_products
+):
+    target_product_id = shared_home_with_products["products"]["public_product"]["db"][
+        "id"
+    ]
 
-    response = get_product_detail_request(client, target_product_id, outsider_user["headers"])
+    response = get_product_detail_request(
+        client, target_product_id, outsider_user["headers"]
+    )
     assert response.status_code == 403, response.text
 
     body = response.json()
@@ -208,9 +231,13 @@ def test_user_from_another_home_cannot_view_foreign_product_detail(
     shared_home_with_products,
     private_home_setup,
 ):
-    target_product_id = shared_home_with_products["products"]["public_product"]["db"]["id"]
+    target_product_id = shared_home_with_products["products"]["public_product"]["db"][
+        "id"
+    ]
 
-    response = get_product_detail_request(client, target_product_id, private_home_setup["headers"])
+    response = get_product_detail_request(
+        client, target_product_id, private_home_setup["headers"]
+    )
     assert response.status_code == 404, response.text
 
     body = response.json()
@@ -224,7 +251,9 @@ def test_unauthenticated_user_cannot_view_product_detail(
     shared_home_with_products,
     headers,
 ):
-    target_product_id = shared_home_with_products["products"]["public_product"]["db"]["id"]
+    target_product_id = shared_home_with_products["products"]["public_product"]["db"][
+        "id"
+    ]
 
     response = get_product_detail_request(client, target_product_id, headers)
     assert response.status_code in (401, 403), response.text
@@ -233,7 +262,9 @@ def test_unauthenticated_user_cannot_view_product_detail(
     assert body["code"] == "AUTH_REQUIRED"
 
 
-def test_viewing_non_existing_product_detail_returns_error(client, shared_home_with_products):
+def test_viewing_non_existing_product_detail_returns_error(
+    client, shared_home_with_products
+):
     headers = shared_home_with_products["owner_headers"]
 
     response = get_product_detail_request(client, 999999, headers)
@@ -262,7 +293,9 @@ def test_deleted_product_detail_returns_not_found(
     shared_home_with_products,
 ):
     headers = shared_home_with_products["owner_headers"]
-    target_product_id = shared_home_with_products["products"]["public_product"]["db"]["id"]
+    target_product_id = shared_home_with_products["products"]["public_product"]["db"][
+        "id"
+    ]
 
     delete_response = delete_product_request(client, target_product_id, headers)
     assert delete_response.status_code == 200, delete_response.text

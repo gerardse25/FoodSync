@@ -43,9 +43,18 @@ def test_can_view_inventory_with_existing_products(client, shared_home_with_prod
 
     product_names = {product["nom"] for product in body["productes"]}
 
-    assert shared_home_with_products["products"]["owner_private"]["payload"]["name"] in product_names
-    assert shared_home_with_products["products"]["member1_private"]["payload"]["name"] in product_names
-    assert shared_home_with_products["products"]["public_product"]["payload"]["name"] in product_names
+    assert (
+        shared_home_with_products["products"]["owner_private"]["payload"]["name"]
+        in product_names
+    )
+    assert (
+        shared_home_with_products["products"]["member1_private"]["payload"]["name"]
+        in product_names
+    )
+    assert (
+        shared_home_with_products["products"]["public_product"]["payload"]["name"]
+        in product_names
+    )
 
 
 def test_member_can_view_all_home_products_including_products_owned_by_other_users(
@@ -54,9 +63,15 @@ def test_member_can_view_all_home_products_including_products_owned_by_other_use
 ):
     headers = shared_home_with_products["member1_headers"]
 
-    owner_private_name = shared_home_with_products["products"]["owner_private"]["payload"]["name"]
-    member_private_name = shared_home_with_products["products"]["member1_private"]["payload"]["name"]
-    public_name = shared_home_with_products["products"]["public_product"]["payload"]["name"]
+    owner_private_name = shared_home_with_products["products"]["owner_private"][
+        "payload"
+    ]["name"]
+    member_private_name = shared_home_with_products["products"]["member1_private"][
+        "payload"
+    ]["name"]
+    public_name = shared_home_with_products["products"]["public_product"]["payload"][
+        "name"
+    ]
 
     response = client.get(INVENTORY_ENDPOINT, headers=headers)
     assert response.status_code == 200, response.text

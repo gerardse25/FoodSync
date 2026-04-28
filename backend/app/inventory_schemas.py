@@ -105,7 +105,7 @@ class CreateInventoryManualProductRequest(BaseModel):
     quantitat: Optional[int] = None
     data_compra: Optional[date] = None
     data_caducitat: Optional[date] = None
-    owner_user_ids: Optional[List[UUID]] = Field(default_factory=list)
+    id_propietaris_privats: List[UUID] = Field(default_factory=list)
 
 
 class CreateInventoryProductResponseItem(BaseModel):
@@ -119,7 +119,7 @@ class CreateInventoryProductResponseItem(BaseModel):
     data_caducitat: Optional[date] = None
     codi_barres: Optional[str] = None
     metode_registre: str
-    owner_user_ids: List[str] = []
+    owner_user_ids: List[str] = Field(default_factory=list)
 
 
 class CreateInventoryProductResponse(BaseModel):
@@ -164,7 +164,7 @@ class ConfirmBarcodeProductRequest(BaseModel):
     quantitat: Optional[int] = None
     data_compra: Optional[date] = None
     data_caducitat: Optional[date] = None
-    owner_user_ids: Optional[List[UUID]] = Field(default_factory=list)
+    id_propietaris_privats: List[UUID] = Field(default_factory=list)
 
 
 # =========================

@@ -57,7 +57,9 @@ def test_inventory_search_and_filter_returns_correct_product(
     shared_home_with_products,
 ):
     headers = shared_home_with_products["owner_headers"]
-    target_name = shared_home_with_products["products"]["owner_private"]["payload"]["name"]
+    target_name = shared_home_with_products["products"]["owner_private"]["payload"][
+        "name"
+    ]
     target_category = get_db_category(shared_home_with_products, "owner_private")
 
     response = client.get(
@@ -118,7 +120,9 @@ def test_inventory_search_existing_name_and_filter_non_existing_category_returns
     shared_home_with_products,
 ):
     headers = shared_home_with_products["owner_headers"]
-    target_name = shared_home_with_products["products"]["owner_private"]["payload"]["name"]
+    target_name = shared_home_with_products["products"]["owner_private"]["payload"][
+        "name"
+    ]
 
     response = client.get(
         f"{INVENTORY_ENDPOINT}?nom={target_name}&categoria=Categoria que no existeix",
@@ -135,7 +139,9 @@ def test_inventory_search_and_filter_data_do_not_match_returns_empty_list(
     shared_home_with_products,
 ):
     headers = shared_home_with_products["owner_headers"]
-    target_name = shared_home_with_products["products"]["owner_private"]["payload"]["name"]
+    target_name = shared_home_with_products["products"]["owner_private"]["payload"][
+        "name"
+    ]
     wrong_category = get_db_category(shared_home_with_products, "public_product")
 
     response = client.get(
@@ -169,9 +175,13 @@ def test_can_view_private_products_of_another_user_using_search_and_filter(
     shared_home_with_products,
 ):
     headers = shared_home_with_products["member2_headers"]
-    private_product_name = shared_home_with_products["products"]["owner_private"]["payload"]["name"]
-    private_product_category = get_db_category(shared_home_with_products, "owner_private")
- 
+    private_product_name = shared_home_with_products["products"]["owner_private"][
+        "payload"
+    ]["name"]
+    private_product_category = get_db_category(
+        shared_home_with_products, "owner_private"
+    )
+
     response = client.get(
         f"{INVENTORY_ENDPOINT}?nom={private_product_name}&categoria={private_product_category}",
         headers=headers,
@@ -255,7 +265,9 @@ def test_inventory_owner_and_name_returns_expected_private_product(
 ):
     headers = shared_home_with_products["owner_headers"]
     owner_id = shared_home_with_products["owner"]["user"]["id"]
-    target_name = shared_home_with_products["products"]["owner_private"]["payload"]["name"]
+    target_name = shared_home_with_products["products"]["owner_private"]["payload"][
+        "name"
+    ]
 
     response = client.get(
         f"{INVENTORY_ENDPOINT}?nom={target_name}&{OWNER_FILTER_PARAM}={owner_id}",
@@ -275,7 +287,9 @@ def test_inventory_owner_and_category_returns_expected_private_product(
 ):
     headers = shared_home_with_products["owner_headers"]
     owner_id = shared_home_with_products["owner"]["user"]["id"]
-    target_name = shared_home_with_products["products"]["owner_private"]["payload"]["name"]
+    target_name = shared_home_with_products["products"]["owner_private"]["payload"][
+        "name"
+    ]
     target_category = get_db_category(shared_home_with_products, "owner_private")
 
     response = client.get(
@@ -298,7 +312,9 @@ def test_inventory_owner_and_quantity_range_returns_expected_private_product(
 ):
     headers = shared_home_with_products["owner_headers"]
     owner_id = shared_home_with_products["owner"]["user"]["id"]
-    target_name = shared_home_with_products["products"]["owner_private"]["payload"]["name"]
+    target_name = shared_home_with_products["products"]["owner_private"]["payload"][
+        "name"
+    ]
     quantity = get_db_quantity(shared_home_with_products, "owner_private")
 
     response = client.get(
@@ -321,7 +337,9 @@ def test_inventory_name_category_and_owner_returns_exact_match(
 ):
     headers = shared_home_with_products["owner_headers"]
     owner_id = shared_home_with_products["owner"]["user"]["id"]
-    target_name = shared_home_with_products["products"]["owner_private"]["payload"]["name"]
+    target_name = shared_home_with_products["products"]["owner_private"]["payload"][
+        "name"
+    ]
     target_category = get_db_category(shared_home_with_products, "owner_private")
 
     response = client.get(
@@ -342,7 +360,9 @@ def test_inventory_name_category_quantity_and_owner_returns_exact_match(
 ):
     headers = shared_home_with_products["owner_headers"]
     owner_id = shared_home_with_products["owner"]["user"]["id"]
-    target_name = shared_home_with_products["products"]["owner_private"]["payload"]["name"]
+    target_name = shared_home_with_products["products"]["owner_private"]["payload"][
+        "name"
+    ]
     target_category = get_db_category(shared_home_with_products, "owner_private")
     quantity = get_db_quantity(shared_home_with_products, "owner_private")
 
@@ -372,7 +392,9 @@ def test_inventory_name_and_owner_with_no_match_returns_empty_list(
 ):
     headers = shared_home_with_products["owner_headers"]
     owner_id = shared_home_with_products["owner"]["user"]["id"]
-    member1_private_name = shared_home_with_products["products"]["member1_private"]["payload"]["name"]
+    member1_private_name = shared_home_with_products["products"]["member1_private"][
+        "payload"
+    ]["name"]
 
     response = client.get(
         f"{INVENTORY_ENDPOINT}?nom={member1_private_name}&{OWNER_FILTER_PARAM}={owner_id}",
@@ -390,7 +412,9 @@ def test_inventory_category_and_owner_with_no_match_returns_empty_list(
 ):
     headers = shared_home_with_products["owner_headers"]
     owner_id = shared_home_with_products["owner"]["user"]["id"]
-    member1_private_category = get_db_category(shared_home_with_products, "member1_private")
+    member1_private_category = get_db_category(
+        shared_home_with_products, "member1_private"
+    )
 
     response = client.get(
         f"{INVENTORY_ENDPOINT}?categoria={member1_private_category}&{OWNER_FILTER_PARAM}={owner_id}",

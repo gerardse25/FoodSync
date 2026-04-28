@@ -54,7 +54,9 @@ def test_inventory_filter_by_exact_category_returns_correct_products(
     headers = shared_home_with_products["owner_headers"]
     target_category = get_db_category(shared_home_with_products, "owner_private")
 
-    response = client.get(f"{INVENTORY_ENDPOINT}?categoria={target_category}", headers=headers)
+    response = client.get(
+        f"{INVENTORY_ENDPOINT}?categoria={target_category}", headers=headers
+    )
     assert response.status_code == 200, response.text
 
     body = response.json()
@@ -98,8 +100,12 @@ def test_can_view_private_products_of_another_user_using_category_filter(
     shared_home_with_products,
 ):
     headers = shared_home_with_products["member2_headers"]
-    private_product_category = get_db_category(shared_home_with_products, "owner_private")
-    private_product_name = shared_home_with_products["products"]["owner_private"]["payload"]["name"]
+    private_product_category = get_db_category(
+        shared_home_with_products, "owner_private"
+    )
+    private_product_name = shared_home_with_products["products"]["owner_private"][
+        "payload"
+    ]["name"]
 
     response = client.get(
         f"{INVENTORY_ENDPOINT}?categoria={private_product_category}",
@@ -154,7 +160,9 @@ def test_filter_by_quantity_range_returns_only_products_inside_range(
 ):
     headers = shared_home_with_products["owner_headers"]
 
-    response = client.get(f"{INVENTORY_ENDPOINT}?min_quantity=2&max_quantity=5", headers=headers)
+    response = client.get(
+        f"{INVENTORY_ENDPOINT}?min_quantity=2&max_quantity=5", headers=headers
+    )
     assert response.status_code == 200, response.text
 
     body = response.json()
@@ -203,9 +211,15 @@ def test_filter_by_owner_user_returns_only_products_of_that_owner(
     headers = shared_home_with_products["owner_headers"]
     owner_id = shared_home_with_products["owner"]["user"]["id"]
 
-    owner_private_name = shared_home_with_products["products"]["owner_private"]["payload"]["name"]
-    member1_private_name = shared_home_with_products["products"]["member1_private"]["payload"]["name"]
-    public_product_name = shared_home_with_products["products"]["public_product"]["payload"]["name"]
+    owner_private_name = shared_home_with_products["products"]["owner_private"][
+        "payload"
+    ]["name"]
+    member1_private_name = shared_home_with_products["products"]["member1_private"][
+        "payload"
+    ]["name"]
+    public_product_name = shared_home_with_products["products"]["public_product"][
+        "payload"
+    ]["name"]
 
     response = client.get(
         f"{INVENTORY_ENDPOINT}?{OWNER_FILTER_PARAM}={owner_id}",
@@ -228,9 +242,15 @@ def test_filter_by_other_member_owner_returns_products_of_that_member(
     headers = shared_home_with_products["owner_headers"]
     member1_id = shared_home_with_products["member1"]["user"]["id"]
 
-    owner_private_name = shared_home_with_products["products"]["owner_private"]["payload"]["name"]
-    member1_private_name = shared_home_with_products["products"]["member1_private"]["payload"]["name"]
-    public_product_name = shared_home_with_products["products"]["public_product"]["payload"]["name"]
+    owner_private_name = shared_home_with_products["products"]["owner_private"][
+        "payload"
+    ]["name"]
+    member1_private_name = shared_home_with_products["products"]["member1_private"][
+        "payload"
+    ]["name"]
+    public_product_name = shared_home_with_products["products"]["public_product"][
+        "payload"
+    ]["name"]
 
     response = client.get(
         f"{INVENTORY_ENDPOINT}?{OWNER_FILTER_PARAM}={member1_id}",

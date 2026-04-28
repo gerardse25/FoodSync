@@ -1,4 +1,5 @@
 from datetime import datetime
+from decimal import Decimal, InvalidOperation
 from typing import Optional
 from uuid import UUID
 
@@ -84,22 +85,52 @@ def _validate_price_quantity(price, quantity):
     if quantity is None:
         return _json_error("La quantitat és obligatòria.", 422, "QUANTITY_REQUIRED")
 
-    if price < 0:
-        return _json_error("El preu no pot ser negatiu.", 422, "PRICE_INVALID")
-
-    if price != round(price, 2):
+    # --- PRICE ---
+    try:
+        price_decimal = Decimal(str(price).strip())
+    except (InvalidOperation, ValueError, AttributeError):
         return _json_error(
-            "El preu no pot tenir més de 2 decimals.", 422, "PRICE_INVALID"
+            "El preu no té un format vàlid.",
+            422,
+            "PRICE_INVALID",
         )
 
-    if quantity <= 0:
+    if price_decimal < 0:
         return _json_error(
-            "La quantitat ha de ser superior a 0.", 422, "QUANTITY_INVALID"
+            "El preu no pot ser negatiu.",
+            422,
+            "PRICE_INVALID",
         )
 
-    if quantity > 99:
+    if price_decimal.as_tuple().exponent < -2:
         return _json_error(
-            "La quantitat màxima permesa és 99.", 422, "QUANTITY_TOO_HIGH"
+            "El preu no pot tenir més de 2 decimals.",
+            422,
+            "PRICE_INVALID",
+        )
+
+    # --- QUANTITY ---
+    try:
+        quantity_int = int(quantity)
+    except (ValueError, TypeError):
+        return _json_error(
+            "La quantitat no és vàlida.",
+            422,
+            "QUANTITY_INVALID",
+        )
+
+    if quantity_int <= 0:
+        return _json_error(
+            "La quantitat ha de ser superior a 0.",
+            422,
+            "QUANTITY_INVALID",
+        )
+
+    if quantity_int > 99:
+        return _json_error(
+            "La quantitat màxima permesa és 99.",
+            422,
+            "QUANTITY_TOO_HIGH",
         )
 
     return None
@@ -171,29 +202,29 @@ def _apply_off_snapshot_to_catalog_product(
     catalog_product.off_last_synced_at = datetime.utcnow()
 
 
-def _build_create_response(inv_prod, cat_prod, cat_row):
-    # Extraiem els IDs de la relació que SQLAlchemy ha carregat gràcies al db.refresh()
+def _build_create_response(inv_prod, cat_prod, cat_row, missatge: str):
     owners_list = []
-    if hasattr(inv_prod, 'owners') and inv_prod.owners:
+    if hasattr(inv_prod, "owners") and inv_prod.owners:
         owners_list = [str(o.user_id) for o in inv_prod.owners]
 
     return schemas.CreateInventoryProductResponse(
         code="PRODUCT_CREATED",
-        missatge="Producte afegit correctament.",
+        missatge=missatge,
         producte=schemas.CreateInventoryProductResponseItem(
             id_producte=str(inv_prod.id_inventari),
             id_producte_cataleg=str(cat_prod.id_producte_cataleg),
             nom=cat_prod.nom,
             quantitat=inv_prod.quantitat,
             categoria=cat_row.nom,
-            preu=str(inv_prod.preu) if inv_prod.preu else None,
+            preu=str(inv_prod.preu) if inv_prod.preu is not None else None,
             data_compra=inv_prod.data_compra,
             data_caducitat=inv_prod.data_caducitat,
             codi_barres=cat_prod.codi_barres,
             metode_registre=inv_prod.metode_registre,
-            owner_user_ids=owners_list # <-- Això és el que busca el test
+            owner_user_ids=owners_list,
         ),
     )
+
 
 @router.get("", response_model=None)
 def get_inventory(
@@ -254,12 +285,12 @@ def get_inventory(
             )
             .first()
         )
-        
+
         if not owner_membership:
             return _json_error(
-                "L'usuari indicat al filtre no pertany a aquesta llar.", 
-                400, 
-                "OWNER_NOT_IN_HOME"
+                "L'usuari indicat al filtre no pertany a aquesta llar.",
+                400,
+                "OWNER_NOT_IN_HOME",
             )
 
     # Validació rang quantitat
@@ -332,11 +363,11 @@ def get_all_inventory_categories():
 def get_inventory_categories(
     q: Optional[str] = Query(None),  # Paràmetre de cerca opcional
     current=Depends(app.auth.get_current_user),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
     user, _ = current
     membership = _get_active_membership(user.id, db)
-    
+
     if not membership:
         return _json_error("No pertanys a cap llar activa.", 404, "NOT_IN_HOME")
 
@@ -366,13 +397,9 @@ def get_inventory_categories(
             "code": "HOME_CATEGORIES_RETRIEVED",
             "missatge": "Categories de la llar obtingudes correctament",
             "categories": [
-                {
-                    "id": cat.id_categoria, 
-                    "nom": cat.nom
-                } 
-                for cat in categories
-            ]
-        }
+                {"id": cat.id_categoria, "nom": cat.nom} for cat in categories
+            ],
+        },
     )
 
 
@@ -417,12 +444,12 @@ def get_inventory_product_detail(
 
     if not result:
         return JSONResponse(
-        status_code=404,
-        content={
-            "code": "PRODUCT_NOT_FOUND",
-            "error": "El producte no s'ha trobat."
-        }
-    )
+            status_code=404,
+            content={
+                "code": "PRODUCT_NOT_FOUND",
+                "error": "El producte no s'ha trobat.",
+            },
+        )
 
     inv_prod, cat_prod, category = result
 
@@ -462,9 +489,7 @@ def get_inventory_product_detail(
 
 
 @router.post(
-    "/manual",
-    response_model=schemas.CreateInventoryProductResponse,
-    status_code=201,
+    "/manual", response_model=schemas.CreateInventoryProductResponse, status_code=201
 )
 def create_inventory_product_manual(
     data: schemas.CreateInventoryManualProductRequest,
@@ -473,36 +498,50 @@ def create_inventory_product_manual(
 ):
     user, _session = current
 
-    # 1. Validació de llar
     membership = _get_active_membership(user.id, db)
     if not membership:
         return _json_error("No pertanys a cap llar.", 404, "NOT_IN_HOME")
 
     home = _get_active_home(membership.home_id, db)
-    
-    # --- CHECK 1: VALIDACIÓ DE PROPIETARIS ---
-    # Agafem els IDs del payload (data.owner_user_ids)
-    requested_owners = getattr(data, "owner_user_ids", [])
-    
-    # EXECUTEM LA VALIDACIÓ: Si un owner no és de la llar, owner_error tindrà un
-    # JSONResponse
-    owner_ids, owner_error = _validate_owner_list(home.id, requested_owners, db)
-    if owner_error:
-        return owner_error # Atura l'execució i retorna 400 (Arrecla els tests 2 i 3)
+    if not home:
+        return _json_error(
+            "La llar no existeix o ha estat dissolta.",
+            404,
+            "HOME_NOT_FOUND",
+        )
 
-    # 2. Normalització i Categoria
     name, error = _normalize_product_name(data.nom)
     if error:
         return error
-    category_row = _get_or_create_category_row(data.categoria, db)
 
-    # 3. Creació física del producte
-    # Si hi ha owners, el producte es marca com a privat
+    if data.categoria is None:
+        return _json_error(
+            "La categoria és obligatòria.",
+            422,
+            "CATEGORY_REQUIRED",
+        )
+
+    validation_error = _validate_price_quantity(data.preu, data.quantitat)
+    if validation_error:
+        return validation_error
+
+    owner_ids, owner_error = _validate_owner_list(
+        home.id,
+        data.id_propietaris_privats,
+        db,
+    )
+    if owner_error:
+        return owner_error
+
+    category_row = _get_or_create_category_row(data.categoria, db)
     is_private = len(owner_ids) > 0
 
     catalog_product = CatalogProduct(
+        codi_barres=None,
         nom=name,
-        id_categoria=category_row.id_categoria
+        marca=None,
+        id_categoria=category_row.id_categoria,
+        imatge_url=None,
     )
     db.add(catalog_product)
     db.flush()
@@ -515,26 +554,30 @@ def create_inventory_product_manual(
         preu=data.preu,
         data_compra=data.data_compra,
         metode_registre="manual",
-        es_privat=is_private
+        es_privat=is_private,
     )
     db.add(inventory_product)
     db.flush()
 
-    # --- CHECK 2: INSERCIÓ A LA TAULA D'UNIO ---
-    # Arrecla el test 1 (perquè ja no tornarà una llista buida [])
-    for o_id in owner_ids:
-        new_owner_link = InventoryProductOwner(
-            id_inventari=inventory_product.id_inventari,
-            user_id=o_id
+    for owner_id in owner_ids:
+        db.add(
+            InventoryProductOwner(
+                id_inventari=inventory_product.id_inventari,
+                user_id=owner_id,
+            )
         )
-        db.add(new_owner_link)
 
-    # 4. Commit i Refresh
+    home.updated_at = datetime.utcnow()
+
     db.commit()
-    # Refresquem per carregar la relació 'owners' des de la BD al model de Python
     db.refresh(inventory_product)
 
-    return _build_create_response(inventory_product, catalog_product, category_row)
+    return _build_create_response(
+        inventory_product,
+        catalog_product,
+        category_row,
+        "Producte manual afegit correctament a l'inventari.",
+    )
 
 
 @router.get("/barcode/{barcode}", response_model=schemas.BarcodeLookupResponseSchema)
@@ -622,6 +665,7 @@ def lookup_inventory_product_by_barcode(
         ),
     )
 
+
 @router.post(
     "/barcode/confirm",
     response_model=schemas.CreateInventoryProductResponse,
@@ -641,7 +685,9 @@ def confirm_and_add_barcode_product(
     home = _get_active_home(membership.home_id, db)
     if not home:
         return _json_error(
-            "La llar no existeix o ha estat dissolta.", 404, "HOME_NOT_FOUND"
+            "La llar no existeix o ha estat dissolta.",
+            404,
+            "HOME_NOT_FOUND",
         )
 
     barcode = data.barcode.strip()
@@ -656,14 +702,14 @@ def confirm_and_add_barcode_product(
     if validation_error:
         return validation_error
 
-    # Validació d'owners i determinació de privacitat
     owner_ids, owner_error = _validate_owner_list(
-        home.id, data.id_propietaris_privats, db
+        home.id,
+        data.id_propietaris_privats,
+        db,
     )
     if owner_error:
         return owner_error
-    
-    # REGLA: Si hi ha owners a la llista, el producte és privat
+
     is_private = len(owner_ids) > 0
 
     catalog_product = (
@@ -675,6 +721,7 @@ def confirm_and_add_barcode_product(
         off_data = lookup_barcode_enriched(barcode)
 
     resolved_name = None
+
     if data.nom is not None and data.nom.strip():
         resolved_name, error = _normalize_product_name(data.nom)
         if error:
@@ -687,27 +734,72 @@ def confirm_and_add_barcode_product(
             return error
 
     if not resolved_name:
-        return _json_error("El nom és obligatori.", 422, "NAME_REQUIRED")
+        return _json_error(
+            "El nom és obligatori.",
+            422,
+            "NAME_REQUIRED",
+        )
 
-    # Resolució de categoria (simplificat per brevetat)
-    resolved_category = data.categoria
-    if resolved_category is None and catalog_product:
-        # lògica de recuperació de categoria existent...
-        pass
-    
+    resolved_category = None
+
+    if data.categoria is not None:
+        resolved_category = data.categoria
+
+    elif catalog_product is not None and catalog_product.id_categoria is not None:
+        category_row_existing = (
+            db.query(Category)
+            .filter(Category.id_categoria == catalog_product.id_categoria)
+            .first()
+        )
+
+        if category_row_existing:
+            for enum_value, label in CATEGORY_LABELS_CA.items():
+                if label == category_row_existing.nom:
+                    resolved_category = enum_value
+                    break
+
+    if (
+        resolved_category is None
+        and off_data
+        and off_data.get("found")
+        and off_data.get("category")
+    ):
+        try:
+            resolved_category = ProductCategory(off_data.get("category"))
+        except ValueError:
+            resolved_category = None
+
     if resolved_category is None:
-        return _json_error("La categoria és obligatòria.", 422, "CATEGORY_REQUIRED")
+        return _json_error(
+            "La categoria és obligatòria.",
+            422,
+            "CATEGORY_REQUIRED",
+        )
 
     category_row = _get_or_create_category_row(resolved_category, db)
+
+    is_new_catalog_product = False
 
     if catalog_product is None:
         catalog_product = CatalogProduct(
             codi_barres=barcode,
             nom=resolved_name,
+            marca=None,
             id_categoria=category_row.id_categoria,
+            imatge_url=None,
         )
         db.add(catalog_product)
         db.flush()
+        is_new_catalog_product = True
+
+    if is_new_catalog_product or not catalog_product.nom:
+        catalog_product.nom = resolved_name
+
+    if is_new_catalog_product or catalog_product.id_categoria is None:
+        catalog_product.id_categoria = category_row.id_categoria
+
+    if off_data and off_data.get("found"):
+        _apply_off_snapshot_to_catalog_product(catalog_product, off_data)
 
     inventory_product = InventoryProduct(
         id_llar=home.id,
@@ -717,23 +809,30 @@ def confirm_and_add_barcode_product(
         preu=data.preu,
         data_compra=data.data_compra,
         metode_registre="barcode",
-        es_privat=is_private,  # Assignem privacitat
+        es_privat=is_private,
     )
     db.add(inventory_product)
     db.flush()
 
-    # Assignació de propietaris a la taula creuada
     for owner_id in owner_ids:
-        db.add(InventoryProductOwner(
-            id_inventari=inventory_product.id_inventari,
-            user_id=owner_id
-        ))
+        db.add(
+            InventoryProductOwner(
+                id_inventari=inventory_product.id_inventari,
+                user_id=owner_id,
+            )
+        )
 
     home.updated_at = datetime.utcnow()
+
     db.commit()
     db.refresh(inventory_product)
 
-    return _build_create_response(inventory_product, catalog_product, category_row)
+    return _build_create_response(
+        inventory_product,
+        catalog_product,
+        category_row,
+        "Producte amb codi de barres afegit correctament a l'inventari.",
+    )
 
 
 @router.patch("/owners", response_model=schemas.UpdateProductOwnersResponse)
@@ -861,7 +960,7 @@ def _validate_owner_list(home_id, owner_user_ids, db: Session):
     1. Siguin únics (normalització).
     2. Existeixin a la base de dades.
     3. Siguin membres ACTIUS de la llar actual.
-    
+
     Retorna: (llista_normalitzada, None) si tot és correcte.
     Retorna: (None, JSONResponse) si hi ha algun error de validació.
     """
@@ -887,7 +986,7 @@ def _validate_owner_list(home_id, owner_user_ids, db: Session):
             )
             .first()
         )
-        
+
         if not membership:
             # Segons el log d'errors, el test espera un codi de negoci
             # "OWNER_NOT_IN_HOME"
@@ -897,7 +996,7 @@ def _validate_owner_list(home_id, owner_user_ids, db: Session):
                     f"L'usuari amb ID {owner_id} no és un membre actiu d'aquesta llar."
                 ),
                 status_code=400,
-                code="OWNER_NOT_IN_HOME"
+                code="OWNER_NOT_IN_HOME",
             )
 
     return normalized, None
