@@ -1,5 +1,6 @@
-import pytest
 import uuid
+
+import pytest
 
 MANUAL_ENTRY_ENDPOINT = "/inventory/manual"
 PRODUCT_NAME_MAX_LENGTH = 100
@@ -347,7 +348,6 @@ def test_cannot_add_product_with_invalid_price_format(
     response = client.post(MANUAL_ENTRY_ENDPOINT, json=product, headers=headers)
 
     assert response.status_code == 422, response.text
-    body = response.json()
 
 
 def test_can_add_private_product_assigned_to_specific_member(

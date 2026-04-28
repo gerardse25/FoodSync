@@ -1,5 +1,3 @@
-import pytest
-
 from app.product_schemas import CATEGORY_LABELS_CA, ProductCategory
 
 ALL_CATEGORIES_ENDPOINT = "/inventory/categories/all"

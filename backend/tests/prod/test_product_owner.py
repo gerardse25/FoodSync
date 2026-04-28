@@ -1,5 +1,6 @@
-import pytest
 import uuid
+
+import pytest
 
 INVENTORY_MANUAL_ENTRY_ENDPOINT = "/inventory/manual"
 

@@ -1,6 +1,3 @@
-import pytest
-
-
 def create_second_home(client, user_ctx):
     response = client.post(
         "/home/",

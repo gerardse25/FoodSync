@@ -1,9 +1,7 @@
-from datetime import date
-from decimal import Decimal
 import uuid
+from datetime import date
 
 import pytest
-
 
 BARCODE_LOOKUP_ENDPOINT_PREFIX = "/inventory/barcode"
 BARCODE_CONFIRM_ENDPOINT = "/inventory/barcode/confirm"
