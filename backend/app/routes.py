@@ -11,9 +11,9 @@ import app.auth
 import app.models
 import app.schemas
 from app.database import get_db
-from app.validation import contains_control_characters, contains_escape_sequences
 from app.home_models import Home, HomeMembership
 from app.inventory_models import InventoryProduct, InventoryProductOwner
+from app.validation import contains_control_characters, contains_escape_sequences
 
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -885,7 +885,7 @@ def delete_account(
         # 1.2 Actualitzem només els que són privats dins d'aquesta llista
         db.query(InventoryProduct).filter(
             InventoryProduct.id_inventari.in_(product_ids),
-            InventoryProduct.es_privat == True
+            InventoryProduct.es_privat,
         ).update({"es_privat": False}, synchronize_session=False)
         
         # Eliminar ownership

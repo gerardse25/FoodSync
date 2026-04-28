@@ -1,18 +1,18 @@
 from datetime import datetime
 
 from sqlalchemy import (
-    JSON,
+    Boolean,
     CheckConstraint,
     Column,
     Date,
     DateTime,
     ForeignKey,
     Integer,
+    JSON,
     Numeric,
     String,
     Text,
     UniqueConstraint,
-    Boolean,
 )
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
