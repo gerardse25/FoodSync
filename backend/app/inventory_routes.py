@@ -612,8 +612,11 @@ def lookup_inventory_product_by_barcode(
         catalog_product, category = local_result
 
         category_value = None
+        category_label = None
+
         if category:
             category_value = LABEL_TO_CATEGORY_VALUE.get(category.nom)
+            category_label = category.nom
 
         return schemas.BarcodeLookupResponseSchema(
             found=True,
@@ -623,6 +626,7 @@ def lookup_inventory_product_by_barcode(
             product=schemas.BarcodeLookupProductSchema(
                 nom=catalog_product.nom,
                 categoria=category_value,
+                categoria_label=category_label,
                 marca=catalog_product.marca,
                 quantitat_envas=catalog_product.quantitat_envas,
                 nutriscore=catalog_product.nutriscore_grade,
@@ -650,6 +654,15 @@ def lookup_inventory_product_by_barcode(
             product=None,
         )
 
+    category_value = result.get("category")
+    category_label = None
+
+    if category_value:
+        try:
+            category_label = CATEGORY_LABELS_CA[ProductCategory(category_value)]
+        except ValueError:
+            category_label = None
+
     return schemas.BarcodeLookupResponseSchema(
         found=True,
         barcode=barcode,
@@ -657,7 +670,8 @@ def lookup_inventory_product_by_barcode(
         code="BARCODE_FOUND_OFF",
         product=schemas.BarcodeLookupProductSchema(
             nom=result.get("name"),
-            categoria=result.get("category"),
+            categoria=category_value,
+            categoria_label=category_label,
             marca=result.get("brand"),
             quantitat_envas=result.get("package_quantity_label"),
             nutriscore=result.get("nutriscore_grade"),

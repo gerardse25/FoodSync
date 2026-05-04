@@ -3,7 +3,7 @@ from decimal import Decimal
 from typing import List, Optional
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import AliasChoices, BaseModel, ConfigDict, Field
 
 from app.product_schemas import ProductCategory
 
@@ -99,13 +99,21 @@ class InventoryProductDetailResponseSchema(BaseModel):
 
 
 class CreateInventoryManualProductRequest(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+
     nom: Optional[str] = None
     categoria: Optional[ProductCategory] = None
     preu: Optional[Decimal] = None
     quantitat: Optional[int] = None
     data_compra: Optional[date] = None
     data_caducitat: Optional[date] = None
-    id_propietaris_privats: List[UUID] = Field(default_factory=list)
+    id_propietaris_privats: List[UUID] = Field(
+        default_factory=list,
+        validation_alias=AliasChoices(
+            "id_propietaris_privats",
+            "owner_user_ids",
+        ),
+    )
 
 
 class CreateInventoryProductResponseItem(BaseModel):
@@ -136,6 +144,7 @@ class CreateInventoryProductResponse(BaseModel):
 class BarcodeLookupProductSchema(BaseModel):
     nom: Optional[str] = None
     categoria: Optional[str] = None  # enum value, ex: BREAKFAST_CEREALS
+    categoria_label: Optional[str] = None  # label català, ex: Cereals d'esmorzar
     marca: Optional[str] = None
     quantitat_envas: Optional[str] = None
     nutriscore: Optional[str] = None
@@ -157,6 +166,8 @@ class BarcodeLookupResponseSchema(BaseModel):
 
 
 class ConfirmBarcodeProductRequest(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+
     barcode: str
     nom: Optional[str] = None
     categoria: Optional[ProductCategory] = None
@@ -164,7 +175,13 @@ class ConfirmBarcodeProductRequest(BaseModel):
     quantitat: Optional[int] = None
     data_compra: Optional[date] = None
     data_caducitat: Optional[date] = None
-    id_propietaris_privats: List[UUID] = Field(default_factory=list)
+    id_propietaris_privats: List[UUID] = Field(
+        default_factory=list,
+        validation_alias=AliasChoices(
+            "id_propietaris_privats",
+            "owner_user_ids",
+        ),
+    )
 
 
 # =========================
