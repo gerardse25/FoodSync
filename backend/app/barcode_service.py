@@ -29,10 +29,8 @@ def _clean_text(value):
 
 
 def _extract_category(product_data: dict) -> str:
-    raw_tags = product_data.get("categories_tags") or product_data.get("categories", "")
-    internal_cat = map_off_to_internal_category(raw_tags)
+    internal_cat = map_off_to_internal_category(product_data)
     return internal_cat.value
-
 
 def _extract_ingredients(product_data: dict) -> str | None:
     return (

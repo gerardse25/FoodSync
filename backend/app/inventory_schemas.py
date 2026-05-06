@@ -26,6 +26,7 @@ class InventoryProductSchema(BaseModel):
     quantitat: int
     categoria: str
     data_caducitat: Optional[date] = None
+    data_caducitat_estimada: bool = False
     es_privat: bool
     owner_user_ids: List[str] = []
     # Si vols l'objecte complex amb nom:
@@ -68,6 +69,7 @@ class InventoryProductDetailSchema(BaseModel):
     categoria: Optional[str] = None
 
     data_caducitat: Optional[date] = None
+    data_caducitat_estimada: bool = False
     data_compra: Optional[date] = None
 
     preu: Optional[str] = None
@@ -125,6 +127,7 @@ class CreateInventoryProductResponseItem(BaseModel):
     preu: Optional[str] = None
     data_compra: Optional[date] = None
     data_caducitat: Optional[date] = None
+    data_caducitat_estimada: bool = False
     codi_barres: Optional[str] = None
     metode_registre: str
     owner_user_ids: List[str] = Field(default_factory=list)
@@ -226,3 +229,22 @@ class UpdateProductOwnersResponse(BaseModel):
     id_producte: str
     es_privat: bool
     propietaris: List[ProductOwnerSchema]
+
+
+# =========================
+# CADUCITAT
+# =========================
+
+
+class EstimateExpirationRequest(BaseModel):
+    categoria: ProductCategory
+    data_compra: Optional[date] = None
+
+
+class EstimateExpirationResponse(BaseModel):
+    code: str = "EXPIRATION_ESTIMATED"
+    categoria: ProductCategory
+    dies_caducitat_estimats: int
+    data_compra: date
+    data_caducitat: date
+    data_caducitat_estimada: bool = True

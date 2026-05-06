@@ -11,6 +11,11 @@ import app.auth
 import app.inventory_schemas as schemas
 from app.barcode_service import is_valid_barcode, lookup_barcode_enriched
 from app.database import get_db
+from app.expiration_service import (
+    ExpirationDateBeforePurchaseDate,
+    get_default_expiration_days,
+    resolve_expiration_fields,
+)
 from app.home_models import Home, HomeMembership
 from app.inventory_models import (
     CatalogProduct,
@@ -164,12 +169,19 @@ def _get_or_create_category_row(
     category_enum: ProductCategory, db: Session
 ) -> Category:
     label = CATEGORY_LABELS_CA[category_enum]
+    expiration_days = get_default_expiration_days(category_enum)
 
     category_row = db.query(Category).filter(Category.nom == label).first()
     if category_row:
+        if category_row.dies_caducitat_estimats != expiration_days:
+            category_row.dies_caducitat_estimats = expiration_days
+            db.flush()
         return category_row
 
-    category_row = Category(nom=label)
+    category_row = Category(
+        nom=label,
+        dies_caducitat_estimats=expiration_days,
+    )
     db.add(category_row)
     db.flush()
     return category_row
@@ -219,11 +231,33 @@ def _build_create_response(inv_prod, cat_prod, cat_row, missatge: str):
             preu=str(inv_prod.preu) if inv_prod.preu is not None else None,
             data_compra=inv_prod.data_compra,
             data_caducitat=inv_prod.data_caducitat,
+            data_caducitat_estimada=inv_prod.data_caducitat_estimada,
             codi_barres=cat_prod.codi_barres,
             metode_registre=inv_prod.metode_registre,
             owner_user_ids=owners_list,
         ),
     )
+
+
+def _resolve_expiration_or_error(
+    category: ProductCategory,
+    purchase_date,
+    expiration_date,
+):
+    try:
+        expiration = resolve_expiration_fields(
+            category=category,
+            purchase_date=purchase_date,
+            provided_expiration_date=expiration_date,
+        )
+        return expiration, None
+
+    except ExpirationDateBeforePurchaseDate:
+        return None, _json_error(
+            "La data de caducitat no pot ser anterior a la data de compra.",
+            422,
+            "EXPIRATION_BEFORE_PURCHASE_DATE",
+        )
 
 
 @router.get("", response_model=None)
@@ -332,6 +366,7 @@ def get_inventory(
                 quantitat=inv_prod.quantitat,
                 categoria=category.nom if category else "Sense categoria",
                 data_caducitat=inv_prod.data_caducitat,
+                data_caducitat_estimada=inv_prod.data_caducitat_estimada,
                 es_privat=len(owners_data) > 0,
                 propietaris=owners_data,
             )
@@ -403,6 +438,36 @@ def get_inventory_categories(
     )
 
 
+@router.post(
+    "/expiration/estimate",
+    response_model=schemas.EstimateExpirationResponse,
+)
+def estimate_product_expiration(
+    data: schemas.EstimateExpirationRequest,
+    current=Depends(app.auth.get_current_user),
+    db: Session = Depends(get_db),
+):
+    user, _session = current
+
+    membership = _get_active_membership(user.id, db)
+    if not membership:
+        return _json_error("No pertanys a cap llar.", 404, "NOT_IN_HOME")
+
+    expiration = resolve_expiration_fields(
+        category=data.categoria,
+        purchase_date=data.data_compra,
+        provided_expiration_date=None,
+    )
+
+    return schemas.EstimateExpirationResponse(
+        categoria=data.categoria,
+        dies_caducitat_estimats=get_default_expiration_days(data.categoria),
+        data_compra=expiration.data_compra,
+        data_caducitat=expiration.data_caducitat,
+        data_caducitat_estimada=True,
+    )
+
+
 @router.get(
     "/{id_producte}", response_model=schemas.InventoryProductDetailResponseSchema
 )
@@ -470,6 +535,7 @@ def get_inventory_product_detail(
         quantitat_envas=cat_prod.quantitat_envas,
         categoria=category.nom if category else None,
         data_caducitat=inv_prod.data_caducitat,
+        data_caducitat_estimada=inv_prod.data_caducitat_estimada,
         data_compra=inv_prod.data_compra,
         preu=str(inv_prod.preu) if inv_prod.preu is not None else None,
         es_privat=es_privat,
@@ -536,6 +602,14 @@ def create_inventory_product_manual(
     category_row = _get_or_create_category_row(data.categoria, db)
     is_private = len(owner_ids) > 0
 
+    expiration, expiration_error = _resolve_expiration_or_error(
+        category=data.categoria,
+        purchase_date=data.data_compra,
+        expiration_date=data.data_caducitat,
+    )
+    if expiration_error:
+        return expiration_error
+
     catalog_product = CatalogProduct(
         codi_barres=None,
         nom=name,
@@ -550,9 +624,10 @@ def create_inventory_product_manual(
         id_llar=home.id,
         id_producte_cataleg=catalog_product.id_producte_cataleg,
         quantitat=data.quantitat,
-        data_caducitat=data.data_caducitat,
+        data_caducitat=expiration.data_caducitat,
+        data_caducitat_estimada=expiration.data_caducitat_estimada,
         preu=data.preu,
-        data_compra=data.data_compra,
+        data_compra=expiration.data_compra,
         metode_registre="manual",
         es_privat=is_private,
     )
@@ -792,6 +867,14 @@ def confirm_and_add_barcode_product(
 
     category_row = _get_or_create_category_row(resolved_category, db)
 
+    expiration, expiration_error = _resolve_expiration_or_error(
+        category=resolved_category,
+        purchase_date=data.data_compra,
+        expiration_date=data.data_caducitat,
+    )
+    if expiration_error:
+        return expiration_error
+
     is_new_catalog_product = False
 
     if catalog_product is None:
@@ -819,9 +902,10 @@ def confirm_and_add_barcode_product(
         id_llar=home.id,
         id_producte_cataleg=catalog_product.id_producte_cataleg,
         quantitat=data.quantitat,
-        data_caducitat=data.data_caducitat,
+        data_caducitat=expiration.data_caducitat,
+        data_caducitat_estimada=expiration.data_caducitat_estimada,
         preu=data.preu,
-        data_compra=data.data_compra,
+        data_compra=expiration.data_compra,
         metode_registre="barcode",
         es_privat=is_private,
     )

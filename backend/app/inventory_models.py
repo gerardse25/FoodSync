@@ -26,6 +26,10 @@ class Category(Base):
     id_categoria = Column(Integer, primary_key=True, index=True, autoincrement=True)
     nom = Column(String(50), nullable=False, unique=True)
 
+    # Dies orientatius per estimar la caducitat segons la categoria.
+    # Això dona compliment a RNF-EXP-01: el període queda reflectit a BBDD.
+    dies_caducitat_estimats = Column(Integer, nullable=True)
+
 
 class CatalogProduct(Base):
     __tablename__ = "productes_cataleg"
@@ -67,6 +71,7 @@ class InventoryProduct(Base):
 
     quantitat = Column(Integer, default=1, nullable=False)
     data_caducitat = Column(Date, nullable=True)
+    data_caducitat_estimada = Column(Boolean, default=False, nullable=False)
 
     # NUEVA COLUMNA:
     es_privat = Column(Boolean, default=False, nullable=False)
