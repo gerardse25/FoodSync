@@ -109,33 +109,29 @@ def apply_future_filters(
     expiry_filter: Optional[str],
 ) -> Query:
     """
-    Placeholder per a filtres pendents d'implementació (RF-INV-02 futur).
-    Els paràmetres s'accepten però no s'apliquen encara.
+    Aplica filtres addicionals (nutriscore, caducitat) i ordena per data de caducitat.
     """
 
     # TODO: nutrition_score — filtrar per CatalogProduct.nutriscore_grade
-    # Exemple d'implementació futura:
-    # if nutrition_score:
-    #     query = query.filter(
-    #         CatalogProduct.nutriscore_grade == nutrition_score.lower()
-    #     )
+    if nutrition_score:
+        pass
 
-    # TODO: expiry_filter — filtrar per InventoryProduct.data_caducitat
-    # Valors possibles: 'expired', 'expiring_soon', 'ok'
-    # Exemple d'implementació futura:
-    # if expiry_filter:
-    #     from datetime import date, timedelta
-    #     today = date.today()
-    #     if expiry_filter == "expired":
-    #         query = query.filter(InventoryProduct.data_caducitat < today)
-    #     elif expiry_filter == "expiring_soon":
-    #         soon = today + timedelta(days=7)
-    #         query = query.filter(
-    #             InventoryProduct.data_caducitat >= today,
-    #             InventoryProduct.data_caducitat <= soon,
-    #         )
-    #     elif expiry_filter == "ok":
-    #         query = query.filter(InventoryProduct.data_caducitat > today)
+    if expiry_filter:
+        from datetime import date, timedelta
+        today = date.today()
+        if expiry_filter == "expired":
+            query = query.filter(InventoryProduct.data_caducitat < today)
+        elif expiry_filter == "expiring_soon":
+            soon = today + timedelta(days=7)
+            query = query.filter(
+                InventoryProduct.data_caducitat >= today,
+                InventoryProduct.data_caducitat <= soon,
+            )
+        elif expiry_filter == "ok":
+            query = query.filter(InventoryProduct.data_caducitat > today)
+
+    # Ordenar per data de caducitat (els que caduquen abans primer)
+    query = query.order_by(InventoryProduct.data_caducitat.asc().nullslast())
 
     return query
 

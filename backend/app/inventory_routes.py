@@ -246,7 +246,7 @@ def get_inventory(
         None, description="[Futur] Nutriscore (A-E). Acceptat, ignorat."
     ),
     expiry_filter: Optional[str] = Query(
-        None, description="[Futur] expired|expiring_soon|ok. Acceptat, ignorat."
+        None, description="Filtre per caducitat (expired, expiring_soon, ok)"
     ),
     current=Depends(app.auth.get_current_user),
     db: Session = Depends(get_db),
