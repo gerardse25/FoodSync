@@ -100,7 +100,9 @@ def _as_list(value: Any) -> list[str]:
     return [str(value)]
 
 
-def extract_category_signals(product_data_or_tags: dict | list[str] | str) -> list[tuple[str, str]]:
+def extract_category_signals(
+    product_data_or_tags: dict | list[str] | str,
+) -> list[tuple[str, str]]:
     """
     Retorna tuples (source, tag_normalitzat).
 
@@ -108,7 +110,9 @@ def extract_category_signals(product_data_or_tags: dict | list[str] | str) -> li
     Si rep list/str, manté compatibilitat amb el codi actual.
     """
     if not isinstance(product_data_or_tags, dict):
-        return [("legacy_tags", tag) for tag in _normalize_off_tags(product_data_or_tags)]
+        return [
+            ("legacy_tags", tag) for tag in _normalize_off_tags(product_data_or_tags)
+        ]
 
     product_data = product_data_or_tags
     signals: list[tuple[str, str]] = []
@@ -176,7 +180,6 @@ EXACT_TAG_MAP: dict[str, ProductCategory] = {
     "nut-butters": ProductCategory.NUT_BUTTER,
     "peanut-butters": ProductCategory.NUT_BUTTER,
     "almond-butters": ProductCategory.NUT_BUTTER,
-
     # BEGUDES
     "waters": ProductCategory.WATER_AND_FLAVORED_WATER,
     "water": ProductCategory.WATER_AND_FLAVORED_WATER,
@@ -201,7 +204,6 @@ EXACT_TAG_MAP: dict[str, ProductCategory] = {
     "plant-based-drinks": ProductCategory.PLANT_BASED_DRINKS,
     "soy-milks": ProductCategory.PLANT_BASED_DRINKS,
     "almond-milks": ProductCategory.PLANT_BASED_DRINKS,
-
     # ALCOHOL
     "beers": ProductCategory.BEER,
     "beer": ProductCategory.BEER,
@@ -211,7 +213,6 @@ EXACT_TAG_MAP: dict[str, ProductCategory] = {
     "spirits": ProductCategory.SPIRITS,
     "liqueurs": ProductCategory.SPIRITS,
     "cocktails": ProductCategory.PREMIXED_ALCOHOLIC_DRINKS,
-
     # LACTIS
     "milk": ProductCategory.MILK,
     "milks": ProductCategory.MILK,
@@ -227,7 +228,6 @@ EXACT_TAG_MAP: dict[str, ProductCategory] = {
     "processed-cheeses": ProductCategory.PROCESSED_CHEESE,
     "hard-cheeses": ProductCategory.HARD_CHEESE,
     "cheeses": ProductCategory.HARD_CHEESE,
-
     # CARN / PEIX / OUS
     "eggs": ProductCategory.EGGS,
     "poultries": ProductCategory.POULTRY,
@@ -250,7 +250,6 @@ EXACT_TAG_MAP: dict[str, ProductCategory] = {
     "seafood": ProductCategory.SEAFOOD,
     "crustaceans": ProductCategory.SEAFOOD,
     "molluscs": ProductCategory.SEAFOOD,
-
     # FRUITA / VERDURA / LLEGUMS
     "fresh-fruits": ProductCategory.FRESH_FRUIT,
     "fruits": ProductCategory.FRESH_FRUIT,
@@ -263,7 +262,6 @@ EXACT_TAG_MAP: dict[str, ProductCategory] = {
     "fresh-soups": ProductCategory.FRESH_SOUPS,
     "soups": ProductCategory.FRESH_SOUPS,
     "dehydrated-soups": ProductCategory.DEHYDRATED_SOUPS,
-
     # CEREALS / FARINACIS
     "breakfast-cereals": ProductCategory.BREAKFAST_CEREALS,
     "mueslis": ProductCategory.BREAKFAST_CEREALS,
@@ -276,7 +274,6 @@ EXACT_TAG_MAP: dict[str, ProductCategory] = {
     "potatoes": ProductCategory.POTATOES,
     "breads": ProductCategory.BREAD,
     "bread": ProductCategory.BREAD,
-
     # DOLÇOS / SNACKS
     "dark-chocolates": ProductCategory.DARK_CHOCOLATE,
     "milk-chocolates": ProductCategory.MILK_CHOCOLATE,
@@ -292,7 +289,6 @@ EXACT_TAG_MAP: dict[str, ProductCategory] = {
     "salty-snacks": ProductCategory.SALTY_SNACKS,
     "chips": ProductCategory.SALTY_SNACKS,
     "crisps": ProductCategory.SALTY_SNACKS,
-
     # GREIXOS / SALSES
     "animal-fats": ProductCategory.ANIMAL_FATS,
     "lards": ProductCategory.ANIMAL_FATS,
@@ -304,14 +300,12 @@ EXACT_TAG_MAP: dict[str, ProductCategory] = {
     "sauces": ProductCategory.SAUCES,
     "ketchups": ProductCategory.SAUCES,
     "mayonnaises": ProductCategory.SAUCES,
-
     # PREPARATS
     "pizzas": ProductCategory.PIZZA_QUICHE,
     "quiches": ProductCategory.PIZZA_QUICHE,
     "sandwiches": ProductCategory.SANDWICHES,
     "ready-meals": ProductCategory.READY_MEALS,
     "prepared-dishes": ProductCategory.READY_MEALS,
-
     # INFANTIL
     "baby-foods": ProductCategory.BABY_FOODS,
     "baby-milks": ProductCategory.BABY_MILKS,
@@ -330,7 +324,6 @@ VARIANT_KEYWORDS: list[tuple[str, ProductCategory]] = [
     ("nut-spread", ProductCategory.NUT_BUTTER),
     ("peanut-butter", ProductCategory.NUT_BUTTER),
     ("almond-butter", ProductCategory.NUT_BUTTER),
-
     # Altres variants específiques
     ("corn-flakes", ProductCategory.BREAKFAST_CEREALS),
     ("breakfast-cereal", ProductCategory.BREAKFAST_CEREALS),

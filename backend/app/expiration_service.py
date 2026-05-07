@@ -5,10 +5,19 @@ from zoneinfo import ZoneInfo
 from app.product_schemas import ProductCategory
 
 DEFAULT_TIMEZONE = ZoneInfo("Europe/Madrid")
+MAX_PURCHASE_DATE_AGE_DAYS = 365
 
 
 class ExpirationDateBeforePurchaseDate(Exception):
     """Raised when expiration date is earlier than purchase date."""
+
+
+class PurchaseDateTooOld(Exception):
+    """Raised when purchase date is older than the allowed limit."""
+
+
+class PurchaseDateInFuture(Exception):
+    """Raised when purchase date is later than today."""
 
 
 @dataclass(frozen=True)
@@ -30,7 +39,6 @@ EXPIRATION_DAYS_BY_CATEGORY: dict[ProductCategory, int] = {
     ProductCategory.FRESH_VEGETABLES: 7,
     ProductCategory.FRESH_SOUPS: 5,
     ProductCategory.DEHYDRATED_SOUPS: 365,
-
     # CEREALS / FARINACIS / SECS
     ProductCategory.BREAD: 5,
     ProductCategory.BREAKFAST_CEREALS: 180,
@@ -38,7 +46,6 @@ EXPIRATION_DAYS_BY_CATEGORY: dict[ProductCategory, int] = {
     ProductCategory.PASTA: 365,
     ProductCategory.POTATOES: 30,
     ProductCategory.LEGUMES: 365,
-
     # LACTIS
     # Assumim producte sense obrir. En el cas de la llet, es prioritza l'escenari
     # més habitual de brick/UHT. Si és llet fresca refrigerada, l'usuari pot corregir.
@@ -51,7 +58,6 @@ EXPIRATION_DAYS_BY_CATEGORY: dict[ProductCategory, int] = {
     ProductCategory.HARD_CHEESE: 90,
     ProductCategory.BLUE_CHEESE: 45,
     ProductCategory.PROCESSED_CHEESE: 90,
-
     # OUS / CARN / PEIX
     ProductCategory.EGGS: 28,
     ProductCategory.POULTRY: 2,
@@ -62,7 +68,6 @@ EXPIRATION_DAYS_BY_CATEGORY: dict[ProductCategory, int] = {
     ProductCategory.FATTY_FISH: 2,
     ProductCategory.SMOKED_FISH: 21,
     ProductCategory.SEAFOOD: 1,
-
     # DOLÇOS / SNACKS / FRUITS SECS
     ProductCategory.DARK_CHOCOLATE: 365,
     ProductCategory.MILK_CHOCOLATE: 270,
@@ -74,19 +79,16 @@ EXPIRATION_DAYS_BY_CATEGORY: dict[ProductCategory, int] = {
     ProductCategory.SALTED_NUTS: 180,
     ProductCategory.NUT_BUTTER: 180,
     ProductCategory.SALTY_SNACKS: 150,
-
     # GREIXOS / SALSES / AMANIMENTS
     ProductCategory.ANIMAL_FATS: 90,
     ProductCategory.VEGETABLE_OILS: 365,
     ProductCategory.MARGARINES: 120,
     ProductCategory.DRESSINGS: 180,
     ProductCategory.SAUCES: 180,
-
     # PREPARATS
     ProductCategory.PIZZA_QUICHE: 5,
     ProductCategory.READY_MEALS: 5,
     ProductCategory.SANDWICHES: 1,
-
     # BEGUDES NO ALCOHÒLIQUES
     ProductCategory.WATER_AND_FLAVORED_WATER: 365,
     ProductCategory.FRUIT_JUICES: 90,
@@ -96,19 +98,16 @@ EXPIRATION_DAYS_BY_CATEGORY: dict[ProductCategory, int] = {
     ProductCategory.UNSWEETENED_BEVERAGES: 180,
     ProductCategory.COFFEE_TEA_HERBAL_TEA: 365,
     ProductCategory.PLANT_BASED_DRINKS: 120,
-
     # ALCOHOL
     ProductCategory.BEER: 180,
     ProductCategory.FERMENTED_ALCOHOLIC_DRINKS: 365,
     ProductCategory.SPIRITS: 3650,
     ProductCategory.PREMIXED_ALCOHOLIC_DRINKS: 365,
-
     # INFANTIL
     ProductCategory.BABY_FOODS: 180,
     ProductCategory.BABY_MILKS: 180,
     ProductCategory.BABY_DRINKS: 180,
     ProductCategory.BABY_DESSERTS_AND_SNACKS: 90,
-
     # FALLBACK CONSERVADOR
     ProductCategory.OTHER: 30,
 }
@@ -137,6 +136,21 @@ def _get_default_purchase_date() -> date:
     return datetime.now(DEFAULT_TIMEZONE).date()
 
 
+def _validate_purchase_date_limit(purchase_date: date) -> None:
+    """
+    Valida que la data de compra no sigui futura ni tingui més d'un any
+    d'antiguitat respecte a la data actual.
+    """
+    today = _get_default_purchase_date()
+    oldest_allowed_date = today - timedelta(days=MAX_PURCHASE_DATE_AGE_DAYS)
+
+    if purchase_date > today:
+        raise PurchaseDateInFuture()
+
+    if purchase_date < oldest_allowed_date:
+        raise PurchaseDateTooOld()
+
+
 def resolve_expiration_fields(
     category: ProductCategory,
     purchase_date: date | None,
@@ -148,9 +162,11 @@ def resolve_expiration_fields(
     - Si l'usuari proporciona data_compra, es respecta.
     - Si no proporciona data_compra, s'assumeix la data actual.
     - Si l'usuari proporciona data_caducitat, es respecta i no es marca com estimada.
-    - Si no proporciona data_caducitat, es calcula segons categoria + data_compra efectiva.
+    - Si no proporciona data_caducitat,
+        es calcula segons categoria + data_compra efectiva.
     """
     effective_purchase_date = purchase_date or _get_default_purchase_date()
+    _validate_purchase_date_limit(effective_purchase_date)
 
     if provided_expiration_date is not None:
         if provided_expiration_date < effective_purchase_date:
