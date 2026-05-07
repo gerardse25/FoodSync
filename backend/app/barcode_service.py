@@ -5,8 +5,12 @@ import requests
 
 from app.category_mapper import map_off_to_internal_category
 
-OFF_BASE_URL = "https://es.openfoodfacts.net"
-OFF_API_URL = OFF_BASE_URL + "/api/v2/product/{barcode}.json"
+OFF_BASE_URLS = [
+    "https://world.openfoodfacts.org",
+    "https://es.openfoodfacts.org",
+    "https://es.openfoodfacts.net",
+]
+
 OFF_TIMEOUT = 8.0
 
 HEADERS = {
@@ -31,6 +35,7 @@ def _clean_text(value):
 def _extract_category(product_data: dict) -> str:
     internal_cat = map_off_to_internal_category(product_data)
     return internal_cat.value
+
 
 def _extract_ingredients(product_data: dict) -> str | None:
     return (
@@ -133,35 +138,48 @@ def _extract_nutriments_per_100g(product_data: dict) -> dict | None:
 
 
 def _fetch_off_product(barcode: str) -> dict | None:
-    url = OFF_API_URL.format(barcode=barcode.strip())
-    print(f"[OFF] GET {url}")
+    barcode = barcode.strip()
 
-    try:
-        response = requests.get(url, headers=HEADERS, timeout=OFF_TIMEOUT)
-        print(f"[OFF] status_code={response.status_code}")
-        print(f"[OFF] response_text_start={response.text[:200]}")
-    except requests.RequestException as exc:
-        print(f"[OFF] request_exception={repr(exc)}")
-        return None
+    for base_url in OFF_BASE_URLS:
+        url = f"{base_url}/api/v2/product/{barcode}.json"
 
-    if response.status_code != 200:
-        return None
+        for attempt in range(2):
+            print(f"[OFF] GET {url} attempt={attempt + 1}")
 
-    try:
-        data = response.json()
-        print(f"[OFF] status_field={data.get('status')}")
-    except Exception as exc:
-        print(f"[OFF] json_exception={repr(exc)}")
-        return None
+            try:
+                response = requests.get(url, headers=HEADERS, timeout=OFF_TIMEOUT)
+                print(f"[OFF] status_code={response.status_code}")
+                print(f"[OFF] response_text_start={response.text[:200]}")
+            except requests.RequestException as exc:
+                print(f"[OFF] request_exception={repr(exc)}")
+                continue
 
-    if data.get("status") != 1:
-        return {"found": False, "barcode": barcode}
+            if response.status_code == 404:
+                break
 
-    return {
-        "found": True,
-        "barcode": barcode,
-        "product_data": data.get("product", {}) or {},
-    }
+            if response.status_code in (500, 502, 503, 504):
+                continue
+
+            if response.status_code != 200:
+                break
+
+            try:
+                data = response.json()
+                print(f"[OFF] status_field={data.get('status')}")
+            except Exception as exc:
+                print(f"[OFF] json_exception={repr(exc)}")
+                continue
+
+            if data.get("status") != 1:
+                return {"found": False, "barcode": barcode}
+
+            return {
+                "found": True,
+                "barcode": barcode,
+                "product_data": data.get("product", {}) or {},
+            }
+
+    return None
 
 
 def lookup_barcode(barcode: str) -> dict | None:

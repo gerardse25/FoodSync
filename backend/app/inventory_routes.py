@@ -13,6 +13,8 @@ from app.barcode_service import is_valid_barcode, lookup_barcode_enriched
 from app.database import get_db
 from app.expiration_service import (
     ExpirationDateBeforePurchaseDate,
+    PurchaseDateInFuture,
+    PurchaseDateTooOld,
     get_default_expiration_days,
     resolve_expiration_fields,
 )
@@ -252,6 +254,20 @@ def _resolve_expiration_or_error(
         )
         return expiration, None
 
+    except PurchaseDateTooOld:
+        return None, _json_error(
+            "La data de compra no pot tenir més d'un any d'antiguitat.",
+            422,
+            "PURCHASE_DATE_TOO_OLD",
+        )
+
+    except PurchaseDateInFuture:
+        return None, _json_error(
+            "La data de compra no pot ser posterior a la data actual.",
+            422,
+            "PURCHASE_DATE_IN_FUTURE",
+        )
+
     except ExpirationDateBeforePurchaseDate:
         return None, _json_error(
             "La data de caducitat no pot ser anterior a la data de compra.",
@@ -453,11 +469,13 @@ def estimate_product_expiration(
     if not membership:
         return _json_error("No pertanys a cap llar.", 404, "NOT_IN_HOME")
 
-    expiration = resolve_expiration_fields(
+    expiration, expiration_error = _resolve_expiration_or_error(
         category=data.categoria,
         purchase_date=data.data_compra,
-        provided_expiration_date=None,
+        expiration_date=None,
     )
+    if expiration_error:
+        return expiration_error
 
     return schemas.EstimateExpirationResponse(
         categoria=data.categoria,
