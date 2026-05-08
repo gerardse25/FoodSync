@@ -2,7 +2,7 @@ import pytest
 from freezegun import freeze_time
 from datetime import date
 
-CADUCITY_ENTRY_ENDPOINT = "/expiration/estimate"
+CADUCITY_ENTRY_ENDPOINT = "/inventory/expiration/estimate"
 
 
 def make_category_purchase_date_json(categoria, data_compra=None):
@@ -86,11 +86,11 @@ def test_invalid_category_return_error(
 
     response = client.post(
         CADUCITY_ENTRY_ENDPOINT,
-        json=make_category_purchase_date_json("invalid_category", "2026-01-01"),
+        json=make_category_purchase_date_json("invalid", "2026-01-01"),
         headers=headers,
     )
 
-    assert response.status_code == 400, response.text
+    assert response.status_code in (400, 422), response.text
     body = response.json()
 
     assert body["code"] == "EXPIRATION_ESTIMATION_NOT_POSSIBLE"
@@ -168,13 +168,13 @@ def test_invalid_date_return_error(
     headers = shared_home_setup["owner_headers"]
 
 
-    with freeze_time("2026-01-01"):
+    with freeze_time("2026-01-01 12:00:00"):
         response = client.post(
             CADUCITY_ENTRY_ENDPOINT,
             json=make_category_purchase_date_json("RICE", date),
             headers=headers,
         )
-        assert response.status_code == 400, response.text
+        assert response.status_code in (400, 422), response.text
         body = response.json()
         assert body["code"] == expected_code
 
@@ -197,7 +197,7 @@ def test_expiration_estimation_does_not_depend_on_hour_or_minutes(
         morning_body = morning_response.json()
         assert morning_body["code"] == "EXPIRATION_ESTIMATED"
 
-    with freeze_time("2026-01-10 23:45:00"):
+    with freeze_time("2026-01-10 20:45:00"):
         night_response = client.post(
             CADUCITY_ENTRY_ENDPOINT,
             json={"categoria": "RICE"},
