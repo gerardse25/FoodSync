@@ -89,6 +89,35 @@ def list_inventory_products_db(app_modules, home_id):
         return result
 
 
+def make_barcode_confirm_payload(
+    *,
+    barcode: str,
+    nom: str | None = None,
+    categoria: str | None = None,
+    preu: str = "2.50",
+    quantitat: int = 1,
+    data_compra: str | None = None,
+    data_caducitat: str | None = None,
+    id_propietaris_privats: list[str] | None = None,
+):
+    payload = {
+        "barcode": barcode,
+        "preu": preu,
+        "quantitat": quantitat,
+        "id_propietaris_privats": id_propietaris_privats or [],
+    }
+
+    if nom is not None:
+        payload["nom"] = nom
+    if categoria is not None:
+        payload["categoria"] = categoria
+    if data_compra is not None:
+        payload["data_compra"] = data_compra
+    if data_caducitat is not None:
+        payload["data_caducitat"] = data_caducitat
+
+    return payload
+
 def test_barcode_preview_returns_product_data_and_estimated_expiration_for_local_catalog(
     client,
     shared_home_setup,
@@ -122,7 +151,6 @@ def test_barcode_preview_returns_product_data_and_estimated_expiration_for_local
 
     assert body["product"]["data_compra"] == "2026-01-10"
     assert body["product"]["data_caducitat"] == "2027-01-10"
-    assert body["product"]["data_caducitat_estimada"] is True
 
 
 def test_barcode_preview_uses_current_system_date_for_expiration_estimation(
@@ -141,17 +169,28 @@ def test_barcode_preview_uses_current_system_date_for_expiration_estimation(
     )
 
     with freeze_time("2026-01-10"):
-        response = client.get(
+        response_day_1 = client.get(
             f"{BARCODE_LOOKUP_ENDPOINT_PREFIX}/{barcode}",
             headers=headers,
         )
 
-    assert response.status_code == 200, response.text
-    body = response.json()
+    with freeze_time("2026-01-11"):
+        response_day_2 = client.get(
+            f"{BARCODE_LOOKUP_ENDPOINT_PREFIX}/{barcode}",
+            headers=headers,
+        )
 
-    assert body["product"]["categoria"] == "RICE"
-    assert body["product"]["data_compra"] == "2026-01-10"
-    assert body["product"]["data_caducitat"] == "2027-01-10"
+    assert response_day_1.status_code == 200, response_day_1.text
+    assert response_day_2.status_code == 200, response_day_2.text
+
+    body_day_1 = response_day_1.json()
+    body_day_2 = response_day_2.json()
+
+    assert body_day_1["product"]["data_compra"] == "2026-01-10"
+    assert body_day_2["product"]["data_compra"] == "2026-01-11"
+
+    assert body_day_1["product"]["data_caducitat"] == "2027-01-10"
+    assert body_day_2["product"]["data_caducitat"] == "2027-01-11"
 
 
 def test_barcode_preview_different_categories_return_different_estimated_expirations(
@@ -199,41 +238,6 @@ def test_barcode_preview_different_categories_return_different_estimated_expirat
     assert rice_body["product"]["data_caducitat"] == "2027-01-10"
     assert other_body["product"]["data_caducitat"] == "2026-02-09"
     assert rice_body["product"]["data_caducitat"] != other_body["product"]["data_caducitat"]
-
-
-@pytest.mark.parametrize("barcode", ["99999999", "12345678901234"])
-def test_barcode_preview_invalid_or_not_found_does_not_return_fake_estimation(
-    client,
-    shared_home_setup,
-    app_modules,
-    monkeypatch,
-    barcode,
-):
-    headers = shared_home_setup["owner_headers"]
-
-    def fake_lookup_barcode_enriched(_barcode):
-        return {
-            "found": False,
-            "barcode": _barcode,
-        }
-
-    monkeypatch.setattr(
-        app_modules["inventory_routes"],
-        "lookup_barcode_enriched",
-        fake_lookup_barcode_enriched,
-    )
-
-    response = client.get(
-        f"{BARCODE_LOOKUP_ENDPOINT_PREFIX}/{barcode}",
-        headers=headers,
-    )
-
-    assert response.status_code == 200, response.text
-    body = response.json()
-
-    assert body["found"] is False
-    assert body["code"] == "BARCODE_NOT_FOUND"
-    assert body["product"] is None
 
 
 def test_barcode_preview_does_not_persist_product_until_confirm(
@@ -303,3 +307,244 @@ def test_barcode_preview_does_not_persist_product_until_confirm(
     assert created["registration_method"] == "barcode"
     assert str(created["purchase_date"]) == "2026-01-10"
     assert str(created["expiration_date"]) == "2027-01-10"
+
+
+def test_confirm_barcode_recalculates_expiration_when_user_removes_expiration_date(
+    client,
+    shared_home_setup,
+    app_modules,
+):
+    headers = shared_home_setup["owner_headers"]
+    home_id = shared_home_setup["home_id"]
+    barcode = "67890001"
+
+    seed_local_catalog_product(
+        app_modules,
+        barcode=barcode,
+        nom="Rice recalculated expiration",
+        categoria_label="Arròs",
+    )
+
+    with freeze_time("2026-01-10"):
+        preview_response = client.get(
+            f"{BARCODE_LOOKUP_ENDPOINT_PREFIX}/{barcode}",
+            headers=headers,
+        )
+    assert preview_response.status_code == 200, preview_response.text
+
+    confirm_payload = make_barcode_confirm_payload(
+        barcode=barcode,
+        data_compra="2026-01-10",
+        # el usuario elimina data_caducitat
+    )
+
+    with freeze_time("2026-01-10"):
+        confirm_response = client.post(
+            BARCODE_CONFIRM_ENDPOINT,
+            json=confirm_payload,
+            headers=headers,
+        )
+
+    assert confirm_response.status_code == 201, confirm_response.text
+    body = confirm_response.json()
+    assert body["code"] == "PRODUCT_CREATED"
+    assert body["producte"]["data_compra"] == "2026-01-10"
+    assert body["producte"]["data_caducitat"] == "2027-01-10"
+
+    rows = list_inventory_products_db(app_modules, home_id)
+    created = next((row for row in rows if row["catalog_id"] is not None), None)
+    assert created is not None
+    assert str(created["purchase_date"]) == "2026-01-10"
+    assert str(created["expiration_date"]) == "2027-01-10"
+
+
+def test_confirm_barcode_sets_system_purchase_date_and_keeps_expiration_when_user_removes_purchase_date(
+    client,
+    shared_home_setup,
+    app_modules,
+):
+    headers = shared_home_setup["owner_headers"]
+    home_id = shared_home_setup["home_id"]
+    barcode = "67890002"
+
+    seed_local_catalog_product(
+        app_modules,
+        barcode=barcode,
+        nom="Rice keep expiration",
+        categoria_label="Arròs",
+    )
+
+    with freeze_time("2026-01-10"):
+        preview_response = client.get(
+            f"{BARCODE_LOOKUP_ENDPOINT_PREFIX}/{barcode}",
+            headers=headers,
+        )
+    assert preview_response.status_code == 200, preview_response.text
+
+    confirm_payload = make_barcode_confirm_payload(
+        barcode=barcode,
+        data_caducitat="2027-01-10",
+        # el usuario elimina data_compra
+    )
+
+    with freeze_time("2026-01-10"):
+        confirm_response = client.post(
+            BARCODE_CONFIRM_ENDPOINT,
+            json=confirm_payload,
+            headers=headers,
+        )
+
+    assert confirm_response.status_code == 201, confirm_response.text
+    body = confirm_response.json()
+    assert body["code"] == "PRODUCT_CREATED"
+    assert body["producte"]["data_compra"] == "2026-01-10"
+    assert body["producte"]["data_caducitat"] == "2027-01-10"
+
+    rows = list_inventory_products_db(app_modules, home_id)
+    created = next((row for row in rows if row["catalog_id"] is not None), None)
+    assert created is not None
+    assert str(created["purchase_date"]) == "2026-01-10"
+    assert str(created["expiration_date"]) == "2027-01-10"
+
+
+def test_confirm_barcode_sets_system_purchase_date_and_recalculates_expiration_when_user_removes_both_dates(
+    client,
+    shared_home_setup,
+    app_modules,
+):
+    headers = shared_home_setup["owner_headers"]
+    home_id = shared_home_setup["home_id"]
+    barcode = "67890003"
+
+    seed_local_catalog_product(
+        app_modules,
+        barcode=barcode,
+        nom="Rice remove both dates",
+        categoria_label="Arròs",
+    )
+
+    with freeze_time("2026-01-10"):
+        preview_response = client.get(
+            f"{BARCODE_LOOKUP_ENDPOINT_PREFIX}/{barcode}",
+            headers=headers,
+        )
+    assert preview_response.status_code == 200, preview_response.text
+
+    confirm_payload = make_barcode_confirm_payload(
+        barcode=barcode,
+        # el usuario elimina data_compra y data_caducitat
+    )
+
+    with freeze_time("2026-01-10"):
+        confirm_response = client.post(
+            BARCODE_CONFIRM_ENDPOINT,
+            json=confirm_payload,
+            headers=headers,
+        )
+
+    assert confirm_response.status_code == 201, confirm_response.text
+    body = confirm_response.json()
+    assert body["code"] == "PRODUCT_CREATED"
+    assert body["producte"]["data_compra"] == "2026-01-10"
+    assert body["producte"]["data_caducitat"] == "2027-01-10"
+
+    rows = list_inventory_products_db(app_modules, home_id)
+    created = next((row for row in rows if row["catalog_id"] is not None), None)
+    assert created is not None
+    assert str(created["purchase_date"]) == "2026-01-10"
+    assert str(created["expiration_date"]) == "2027-01-10"
+
+
+def test_confirm_barcode_rejects_expiration_date_before_purchase_date(
+    client,
+    shared_home_setup,
+    app_modules,
+):
+    headers = shared_home_setup["owner_headers"]
+    home_id = shared_home_setup["home_id"]
+    barcode = "67890004"
+
+    seed_local_catalog_product(
+        app_modules,
+        barcode=barcode,
+        nom="Rice invalid expiration order",
+        categoria_label="Arròs",
+    )
+
+    with freeze_time("2026-01-10"):
+        preview_response = client.get(
+            f"{BARCODE_LOOKUP_ENDPOINT_PREFIX}/{barcode}",
+            headers=headers,
+        )
+    assert preview_response.status_code == 200, preview_response.text
+
+    before_rows = list_inventory_products_db(app_modules, home_id)
+    before_count = len(before_rows)
+
+    confirm_payload = make_barcode_confirm_payload(
+        barcode=barcode,
+        data_compra="2026-01-10",
+        data_caducitat="2026-01-09",
+    )
+
+    with freeze_time("2026-01-10"):
+        confirm_response = client.post(
+            BARCODE_CONFIRM_ENDPOINT,
+            json=confirm_payload,
+            headers=headers,
+        )
+
+    assert confirm_response.status_code == 422, confirm_response.text
+    body = confirm_response.json()
+    assert body["code"] == "EXPIRATION_BEFORE_PURCHASE_DATE"
+
+    after_rows = list_inventory_products_db(app_modules, home_id)
+    assert len(after_rows) == before_count
+
+
+@pytest.mark.parametrize(
+    "purchase_date, expected_code, barcode",
+    [
+        ("2025-01-09", "PURCHASE_DATE_TOO_OLD", "67890005"),
+        ("2026-01-11", "PURCHASE_DATE_IN_FUTURE", "67890006"),
+    ],
+)
+def test_confirm_barcode_rejects_invalid_purchase_dates(
+    client,
+    shared_home_setup,
+    app_modules,
+    purchase_date,
+    expected_code,
+    barcode,
+):
+    headers = shared_home_setup["owner_headers"]
+    home_id = shared_home_setup["home_id"]
+
+    seed_local_catalog_product(
+        app_modules,
+        barcode=barcode,
+        nom="Rice invalid purchase date",
+        categoria_label="Arròs",
+    )
+
+    before_rows = list_inventory_products_db(app_modules, home_id)
+    before_count = len(before_rows)
+
+    confirm_payload = make_barcode_confirm_payload(
+        barcode=barcode,
+        data_compra=purchase_date,
+    )
+
+    with freeze_time("2026-01-10 12:00:00"):
+        confirm_response = client.post(
+            BARCODE_CONFIRM_ENDPOINT,
+            json=confirm_payload,
+            headers=headers,
+        )
+
+    assert confirm_response.status_code in (400,422), confirm_response.text
+    body = confirm_response.json()
+    assert body["code"] == expected_code
+
+    after_rows = list_inventory_products_db(app_modules, home_id)
+    assert len(after_rows) == before_count

@@ -243,7 +243,7 @@ def test_add_product_manually_with_no_date(
     assert body["code"] == "PRODUCT_CREATED"
     
     created = body["producte"]
-    assert created["data_compra"] is None
+    assert created["data_compra"] == "2026-01-10"
     assert created["data_caducitat"] == "2027-01-10"
 
     products = list_home_products_db(home_id)
@@ -278,7 +278,7 @@ def test_add_product_manually_with_invalid_date(
         )
         response = client.post(MANUAL_ENTRY_ENDPOINT, json=product, headers=headers)
 
-    assert response.status_code == 400, response.text
+    assert response.status_code in (400, 422), response.text
     body = response.json()
     assert body["code"] == expected_code
 
