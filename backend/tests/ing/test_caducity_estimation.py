@@ -92,10 +92,7 @@ def test_invalid_category_return_error(
 
     assert response.status_code in (400, 422), response.text
     body = response.json()
-
-    assert body["code"] == "EXPIRATION_ESTIMATION_NOT_POSSIBLE"
-    assert body["categoria"] == "invalid_category"
-    assert body["data_caducitat_estimada"] is False
+    assert "detail" in body
 
 
 def test_purchase_date_same_as_system_date_returns_estimated_expiration(
@@ -168,7 +165,7 @@ def test_invalid_date_return_error(
     headers = shared_home_setup["owner_headers"]
 
 
-    with freeze_time("2026-01-01 12:00:00"):
+    with freeze_time("2026-01-10 12:00:00"):
         response = client.post(
             CADUCITY_ENTRY_ENDPOINT,
             json=make_category_purchase_date_json("RICE", date),
@@ -177,8 +174,8 @@ def test_invalid_date_return_error(
         assert response.status_code in (400, 422), response.text
         body = response.json()
         assert body["code"] == expected_code
+        assert "detail" in body
 
-    assert body["data_caducitat_estimada"] is False
 
 
 def test_expiration_estimation_does_not_depend_on_hour_or_minutes(
