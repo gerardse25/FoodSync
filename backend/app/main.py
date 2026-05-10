@@ -10,6 +10,7 @@ from app.inventory_delete_product import router as inventory_delete_router
 from app.inventory_modify import router as inventory_modify_router
 from app.inventory_routes import router as inventory_router
 from app.routes import router
+from app.ticket_routes import router as ticket_router
 
 app = FastAPI()
 
@@ -20,6 +21,7 @@ app.include_router(home_router)
 app.include_router(inventory_router)
 app.include_router(inventory_modify_router)
 app.include_router(inventory_delete_router)
+app.include_router(ticket_router)
 
 # IMPORTANT:
 # product_router queda fora del main en aquesta branca per evitar
