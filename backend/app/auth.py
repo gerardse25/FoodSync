@@ -25,40 +25,14 @@ from app.config import (
     SMTP_USER,
 )
 from app.database import get_db
+from app.validation import (
+    contains_control_characters,
+    contains_escape_sequences,
+    validate_text,
+)
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 security = HTTPBearer()
-
-
-def _contains_control_characters(value: str) -> bool:
-    return any(ord(ch) < 32 or ord(ch) == 127 for ch in value)
-
-
-def _contains_escape_sequences(value: str) -> bool:
-    return "\\n" in value or "\\t" in value or "\\r" in value
-
-
-def _validate_text(value: str, field_name: str, min_len: int, max_len: int) -> str:
-    value = value.strip()
-
-    if not value:
-        raise ValueError(f"El camp {field_name} no pot estar buit")
-
-    if len(value) < min_len or len(value) > max_len:
-        raise ValueError(
-            f"El camp {field_name} ha de tenir entre {min_len} i {max_len} caràcters"
-        )
-
-    if _contains_control_characters(value):
-        raise ValueError(f"El camp {field_name} no pot contenir caràcters de control")
-
-    if _contains_escape_sequences(value):
-        raise ValueError(f"El camp {field_name} no pot contenir seqüències d'escape")
-
-    if any(ch.isspace() for ch in value):
-        raise ValueError(f"El camp {field_name} no pot contenir espais interns")
-
-    return value
 
 
 def normalize_email(email: str) -> str:
@@ -70,10 +44,10 @@ def normalize_email(email: str) -> str:
     if len(email) > 128:
         raise ValueError("El correu no pot superar els 128 caràcters")
 
-    if _contains_control_characters(email):
+    if contains_control_characters(email):
         raise ValueError("El correu no pot contenir caràcters de control")
 
-    if _contains_escape_sequences(email):
+    if contains_escape_sequences(email):
         raise ValueError("El correu no pot contenir seqüències d'escape")
 
     if any(ch.isspace() for ch in email):
@@ -83,11 +57,11 @@ def normalize_email(email: str) -> str:
 
 
 def normalize_username(username: str) -> str:
-    return _validate_text(username, "nom d'usuari", 2, 16)
+    return validate_text(username, "nom d'usuari", 2, 16)
 
 
 def normalize_password(password: str) -> str:
-    return _validate_text(password, "contrasenya", 6, 32)
+    return validate_text(password, "contrasenya", 6, 32)
 
 
 def hash_password(password: str):
