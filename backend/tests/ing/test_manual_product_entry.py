@@ -5,6 +5,7 @@ import pytest
 MANUAL_ENTRY_ENDPOINT = "/inventory/manual"
 PRODUCT_NAME_MAX_LENGTH = 100
 CATEGORY_EXAMPLE = "RICE"
+BUY_DATE_EXAMPLE = "2026-01-01"
 
 
 def make_manual_inventory_payload(
@@ -13,7 +14,7 @@ def make_manual_inventory_payload(
     preu: str | int | float | None = "2.50",
     categoria: str | None = CATEGORY_EXAMPLE,
     quantitat: int | None = 1,
-    data_compra: str | None = None,
+    data_compra: str | None = BUY_DATE_EXAMPLE,
     data_caducitat: str | None = None,
     id_propietaris_privats: list[str] | None = None,
 ):
