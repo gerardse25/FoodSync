@@ -1,5 +1,7 @@
 import pytest
 
+from datetime import date
+
 DETAIL_ENDPOINT_PREFIX = "/inventory"
 
 
@@ -18,12 +20,9 @@ def delete_product_request(client, product_id, headers):
 
 def test_can_view_detail_of_public_product(client, shared_home_with_products):
     headers = shared_home_with_products["owner_headers"]
-    target_product_id = shared_home_with_products["products"]["public_product"]["db"][
-        "id"
-    ]
-    target_product_name = shared_home_with_products["products"]["public_product"]["db"][
-        "name"
-    ]
+    product_db = shared_home_with_products["products"]["public_product"]["db"]
+    target_product_id = product_db["id"]
+    target_product_name = product_db["name"]
 
     response = get_product_detail_request(client, target_product_id, headers)
     assert response.status_code == 200, response.text
@@ -38,6 +37,8 @@ def test_can_view_detail_of_public_product(client, shared_home_with_products):
     assert product["es_privat"] is False
     assert product["propietaris"] == []
     assert product["estat_stock"] == "En estoc"
+    assert "data_caducitat" in product
+    assert product["data_caducitat"] == product_db["expiration_date"]
 
 
 def test_can_view_detail_of_private_product_with_single_owner(
@@ -45,12 +46,9 @@ def test_can_view_detail_of_private_product_with_single_owner(
     shared_home_with_products,
 ):
     headers = shared_home_with_products["owner_headers"]
-    target_product_id = shared_home_with_products["products"]["owner_private"]["db"][
-        "id"
-    ]
-    target_product_name = shared_home_with_products["products"]["owner_private"]["db"][
-        "name"
-    ]
+    product_db = shared_home_with_products["products"]["owner_private"]["db"]
+    target_product_id = product_db["id"]
+    target_product_name = product_db["name"]
     owner_id = shared_home_with_products["owner"]["user"]["id"]
     owner_name = shared_home_with_products["owner"]["user"]["username"]
 
@@ -65,6 +63,7 @@ def test_can_view_detail_of_private_product_with_single_owner(
     assert product["nom"] == target_product_name
     assert product["es_privat"] is True
     assert product["estat_stock"] == "En estoc"
+    assert product["data_caducitat"] == product_db["expiration_date"]
 
     assert len(product["propietaris"]) == 1
     assert product["propietaris"][0]["id_usuari"] == owner_id
@@ -76,12 +75,9 @@ def test_user_can_view_detail_of_private_product_with_single_owner(
     shared_home_with_products,
 ):
     headers = shared_home_with_products["member2_headers"]
-    target_product_id = shared_home_with_products["products"]["owner_private"]["db"][
-        "id"
-    ]
-    target_product_name = shared_home_with_products["products"]["owner_private"]["db"][
-        "name"
-    ]
+    product_db = shared_home_with_products["products"]["owner_private"]["db"]
+    target_product_id = product_db["id"]
+    target_product_name = product_db["name"]
     owner_id = shared_home_with_products["owner"]["user"]["id"]
     owner_name = shared_home_with_products["owner"]["user"]["username"]
 
@@ -96,6 +92,7 @@ def test_user_can_view_detail_of_private_product_with_single_owner(
     assert product["nom"] == target_product_name
     assert product["es_privat"] is True
     assert product["estat_stock"] == "En estoc"
+    assert product["data_caducitat"] == product_db["expiration_date"]
 
     assert len(product["propietaris"]) == 1
     assert product["propietaris"][0]["id_usuari"] == owner_id
@@ -119,11 +116,12 @@ def test_can_view_detail_of_product_with_multiple_owners(
         home_id=home_id,
         created_by_ctx=shared_home_setup["owner"],
         name="multi_owner_detail_product",
-        category="MULTI_OWNER_TEST",
+        category="OTHER",
         quantity=4,
         price="2.40",
+        expiration_date=date(2026, 5, 20),
         owner_user_ids=[owner_id, member1_id],
-    )
+)
 
     response = get_product_detail_request(client, seeded["id"], headers)
     assert response.status_code == 200, response.text
@@ -136,6 +134,7 @@ def test_can_view_detail_of_product_with_multiple_owners(
     assert product["nom"] == seeded["name"]
     assert product["es_privat"] is True
     assert product["estat_stock"] == "En estoc"
+    assert product["data_caducitat"] == "2026-05-20"
 
     owner_pairs = {
         (owner["id_usuari"], owner["nom"]) for owner in product["propietaris"]
@@ -151,9 +150,7 @@ def test_detail_response_includes_expected_fields(
     shared_home_with_products,
 ):
     headers = shared_home_with_products["member1_headers"]
-    target_product_id = shared_home_with_products["products"]["public_product"]["db"][
-        "id"
-    ]
+    target_product_id = shared_home_with_products["products"]["public_product"]["db"]["id"]
 
     response = get_product_detail_request(client, target_product_id, headers)
     assert response.status_code == 200, response.text
@@ -182,6 +179,42 @@ def test_detail_response_includes_expected_fields(
     assert "allergens" in product
     assert "imatge_url" in product
 
+    assert isinstance(product["nom"], str)
+    assert isinstance(product["quantitat_stock"], int)
+    assert isinstance(product["es_privat"], bool)
+    assert isinstance(product["propietaris"], list)
+    assert product["data_caducitat"] is None or isinstance(product["data_caducitat"], str)
+    assert product["data_compra"] is None or isinstance(product["data_compra"], str)
+
+
+def test_detail_response_includes_product_expiration_date_value(
+    client,
+    shared_home_setup,
+    seed_product_db,
+):
+    headers = shared_home_setup["owner_headers"]
+    home_id = shared_home_setup["home_id"]
+    
+    seeded = seed_product_db(
+        home_id=home_id,
+        created_by_ctx=shared_home_setup["owner"],
+        name="detail_expiration_product",
+        category="OTHER",
+        quantity=2,
+        price="1.50",
+        expiration_date=date(2026, 6, 15),
+        owner_user_ids=[],
+    )
+
+    response = get_product_detail_request(client, seeded["id"], headers)
+    assert response.status_code == 200, response.text
+
+    body = response.json()
+    assert body["code"] == "PRODUCT_DETAIL_RETRIEVED"
+
+    product = body["producte"]
+    assert product["data_caducitat"] == "2026-06-15"
+
 
 def test_detail_marks_product_as_out_of_stock_when_quantity_is_zero(
     client,
@@ -195,9 +228,10 @@ def test_detail_marks_product_as_out_of_stock_when_quantity_is_zero(
         home_id=home_id,
         created_by_ctx=shared_home_setup["owner"],
         name="out_of_stock_detail_product",
-        category="OUT_OF_STOCK_TEST",
+        category="OTHER",
         quantity=0,
         price="1.00",
+        expiration_date=date(2026, 7, 1),
         owner_user_ids=[],
     )
 
@@ -208,14 +242,13 @@ def test_detail_marks_product_as_out_of_stock_when_quantity_is_zero(
     assert body["code"] == "PRODUCT_DETAIL_RETRIEVED"
     assert body["producte"]["quantitat_stock"] == 0
     assert body["producte"]["estat_stock"] == "Exhaurit"
+    assert body["producte"]["data_caducitat"] == "2026-07-01"
 
 
 def test_non_member_without_home_cannot_view_product_detail(
     client, outsider_user, shared_home_with_products
 ):
-    target_product_id = shared_home_with_products["products"]["public_product"]["db"][
-        "id"
-    ]
+    target_product_id = shared_home_with_products["products"]["public_product"]["db"]["id"]
 
     response = get_product_detail_request(
         client, target_product_id, outsider_user["headers"]
@@ -231,9 +264,7 @@ def test_user_from_another_home_cannot_view_foreign_product_detail(
     shared_home_with_products,
     private_home_setup,
 ):
-    target_product_id = shared_home_with_products["products"]["public_product"]["db"][
-        "id"
-    ]
+    target_product_id = shared_home_with_products["products"]["public_product"]["db"]["id"]
 
     response = get_product_detail_request(
         client, target_product_id, private_home_setup["headers"]
@@ -251,9 +282,7 @@ def test_unauthenticated_user_cannot_view_product_detail(
     shared_home_with_products,
     headers,
 ):
-    target_product_id = shared_home_with_products["products"]["public_product"]["db"][
-        "id"
-    ]
+    target_product_id = shared_home_with_products["products"]["public_product"]["db"]["id"]
 
     response = get_product_detail_request(client, target_product_id, headers)
     assert response.status_code in (401, 403), response.text
@@ -293,9 +322,7 @@ def test_deleted_product_detail_returns_not_found(
     shared_home_with_products,
 ):
     headers = shared_home_with_products["owner_headers"]
-    target_product_id = shared_home_with_products["products"]["public_product"]["db"][
-        "id"
-    ]
+    target_product_id = shared_home_with_products["products"]["public_product"]["db"]["id"]
 
     delete_response = delete_product_request(client, target_product_id, headers)
     assert delete_response.status_code == 200, delete_response.text
