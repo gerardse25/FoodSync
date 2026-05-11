@@ -226,3 +226,16 @@ class UpdateProductOwnersResponse(BaseModel):
     id_producte: str
     es_privat: bool
     propietaris: List[ProductOwnerSchema]
+
+
+class ModifyInventoryProductRequest(BaseModel):
+    nom: Optional[str] = None
+    categoria: Optional[ProductCategory] = None
+    preu: Optional[Decimal] = None
+    data_caducitat: Optional[date] = None
+
+
+class ModifyInventoryProductResponse(BaseModel):
+    code: str
+    missatge: str
+    producte: InventoryProductDetailSchema
