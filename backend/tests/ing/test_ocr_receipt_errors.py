@@ -2,6 +2,7 @@ import pytest
 
 OCR_ENDPOINT = "/inventory/ticket/ocr"
 
+
 def assert_ocr_error(response, expected_status, expected_code):
     assert response.status_code == expected_status, response.text
     body = response.json()
@@ -9,7 +10,10 @@ def assert_ocr_error(response, expected_status, expected_code):
     assert "error" in body
     return body
 
-def post_ticket_ocr(client, headers, file_bytes, filename="ticket.png", content_type="image/png"):
+
+def post_ticket_ocr(
+    client, headers, file_bytes, filename="ticket.png", content_type="image/png"
+):
     return client.post(
         "/inventory/ticket/ocr",
         headers=headers,
@@ -101,7 +105,9 @@ def test_corrupted_image_returns_error(
         raise ValueError("Imatge corrupta o no es pot decodificar")
 
     monkeypatch.setattr(ticket_routes, "validate_image", fake_validate_image)
-    monkeypatch.setattr(ticket_routes, "process_ticket_image", fake_process_ticket_image)
+    monkeypatch.setattr(
+        ticket_routes, "process_ticket_image", fake_process_ticket_image
+    )
 
     response = post_ticket_ocr(
         client,
@@ -142,7 +148,9 @@ def test_external_ocr_timeout_returns_controlled_error(
     def fake_process_ticket_image(_image_bytes):
         raise TimeoutError("OCR request timeout")
 
-    monkeypatch.setattr(ticket_routes, "process_ticket_image", fake_process_ticket_image)
+    monkeypatch.setattr(
+        ticket_routes, "process_ticket_image", fake_process_ticket_image
+    )
 
     response = post_ticket_ocr(
         client,
@@ -166,7 +174,9 @@ def test_external_ocr_malformed_response_returns_controlled_error(
     def fake_process_ticket_image(_image_bytes):
         raise ValueError("Malformed OCR response")
 
-    monkeypatch.setattr(ticket_routes, "process_ticket_image", fake_process_ticket_image)
+    monkeypatch.setattr(
+        ticket_routes, "process_ticket_image", fake_process_ticket_image
+    )
 
     response = post_ticket_ocr(
         client,

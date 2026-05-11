@@ -1,5 +1,6 @@
 import pytest
 
+
 def assert_confirm_success(response, expected_count):
     assert response.status_code == 200, response.text
     body = response.json()
@@ -8,12 +9,14 @@ def assert_confirm_success(response, expected_count):
     assert len(body["productes_guardats"]) == expected_count
     return body
 
+
 def assert_confirm_error(response, expected_status, expected_code):
     assert response.status_code == expected_status, response.text
     body = response.json()
     assert body["code"] == expected_code
     assert "error" in body or "detail" in body
     return body
+
 
 def post_ticket_confirm(client, headers, productes):
     return client.post(

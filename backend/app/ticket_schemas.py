@@ -22,7 +22,6 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from app.product_schemas import ProductCategory
 
-
 # ── Producte detectat retornat pel OCR ───────────────────────────────────────
 
 
@@ -91,10 +90,10 @@ class ConfirmTicketProductItem(BaseModel):
       - data_compra
     """
 
-    nom: str
-    categoria: ProductCategory
-    quantitat: int = Field(..., ge=1, le=99)
-    preu: Decimal
+    nom: Optional[str] = None
+    categoria: Optional[ProductCategory] = None
+    quantitat: Optional[int] = None
+    preu: Optional[Decimal] = None
 
     data_caducitat: Optional[date] = None
     data_compra: Optional[date] = None

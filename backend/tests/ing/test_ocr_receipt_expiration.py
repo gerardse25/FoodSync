@@ -1,7 +1,6 @@
 import pytest
 from freezegun import freeze_time
 
-
 OCR_CONFIRM_ENDPOINT = "/inventory/ticket/confirm"
 CATEGORY_EXAMPLE = "RICE"
 
@@ -10,6 +9,7 @@ pytestmark = pytest.mark.xfail(
     reason="La integració de caducitat al flux OCR encara no està implementada",
     strict=False,
 )
+
 
 def assert_confirm_success(response, expected_count):
     assert response.status_code == 200, response.text
@@ -26,6 +26,7 @@ def assert_confirm_error(response, expected_status, expected_code):
     assert body["code"] == expected_code
     assert "error" in body or "detail" in body
     return body
+
 
 def post_ticket_confirm(client, headers, productes):
     return client.post(

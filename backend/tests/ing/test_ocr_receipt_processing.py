@@ -1,6 +1,5 @@
-import pytest
-
 OCR_ENDPOINT = "/inventory/ticket/ocr"
+
 
 def assert_ocr_success(response, expected_code="OCR_SUCCESS"):
     assert response.status_code == 200, response.text
@@ -9,7 +8,10 @@ def assert_ocr_success(response, expected_code="OCR_SUCCESS"):
     assert "productes" in body
     return body
 
-def post_ticket_ocr(client, headers, file_bytes, filename="ticket.png", content_type="image/png"):
+
+def post_ticket_ocr(
+    client, headers, file_bytes, filename="ticket.png", content_type="image/png"
+):
     return client.post(
         "/inventory/ticket/ocr",
         headers=headers,
@@ -37,6 +39,7 @@ def test_ocr_detects_one_product(
     assert len(body["productes"]) == 1
     assert body["productes"][0]["nom"] == "Llet"
 
+
 def test_ocr_detects_multiple_products(
     client,
     shared_home_setup,
@@ -44,10 +47,14 @@ def test_ocr_detects_multiple_products(
     make_ocr_detected_item,
     mock_ticket_ocr_success,
 ):
-    items = [] 
+    items = []
     items.append(make_ocr_detected_item(nom="Llet", categoria="MILK", preu="1.25"))
     items.append(make_ocr_detected_item(nom="Galetes", categoria="OTHER", preu="2.15"))
-    items.append(make_ocr_detected_item(nom="Aigua", categoria="WATER_AND_FLAVORED_WATER", preu="1.00"))
+    items.append(
+        make_ocr_detected_item(
+            nom="Aigua", categoria="WATER_AND_FLAVORED_WATER", preu="1.00"
+        )
+    )
     mock_ticket_ocr_success(items)
 
     response = post_ticket_ocr(
@@ -61,6 +68,7 @@ def test_ocr_detects_multiple_products(
     assert body["productes"][0]["nom"] == "Llet"
     assert body["productes"][1]["nom"] == "Galetes"
     assert body["productes"][2]["nom"] == "Aigua"
+
 
 def test_ocr_returns_products_even_when_secondary_fields_are_missing(
     client,
@@ -153,17 +161,18 @@ def test_ocr_returns_preliminary_products_even_when_some_detected_items_are_high
 
     assert len(body["productes"]) == 3
 
-    assert body["productes"][0]["nom"] == None
+    assert body["productes"][0]["nom"] is None
     assert body["productes"][0]["categoria"] == "MILK"
     assert body["productes"][0]["preu"] == "1.25"
 
     assert body["productes"][1]["nom"] == "Galetes"
-    assert body["productes"][1]["categoria"] == None
+    assert body["productes"][1]["categoria"] is None
     assert body["productes"][1]["preu"] == "2.15"
 
     assert body["productes"][2]["nom"] == "Aigua"
     assert body["productes"][2]["categoria"] == "OTHER"
-    assert body["productes"][2]["preu"] == None
+    assert body["productes"][2]["preu"] is None
+
 
 def test_ocr_returns_preliminary_products_even_with_minimum_product_info(
     client,
@@ -190,16 +199,16 @@ def test_ocr_returns_preliminary_products_even_with_minimum_product_info(
     assert len(body["productes"]) == 3
 
     assert body["productes"][0]["nom"] == "Refresc"
-    assert body["productes"][0]["categoria"] == None
-    assert body["productes"][0]["preu"] == None
+    assert body["productes"][0]["categoria"] is None
+    assert body["productes"][0]["preu"] is None
 
-    assert body["productes"][1]["nom"] == None
-    assert body["productes"][1]["categoria"] == None
+    assert body["productes"][1]["nom"] is None
+    assert body["productes"][1]["categoria"] is None
     assert body["productes"][1]["preu"] == "1.25"
 
-    assert body["productes"][2]["nom"] == None
+    assert body["productes"][2]["nom"] is None
     assert body["productes"][2]["categoria"] == "FRESH_FRUIT"
-    assert body["productes"][2]["preu"] == None
+    assert body["productes"][2]["preu"] is None
 
 
 def test_ocr_returns_products_with_rich_detected_information(
@@ -373,6 +382,7 @@ def test_ocr_returns_preliminary_products_even_with_incomplete_or_noisy_names(
 
     after_products = list_home_products_db(home_id)
     assert after_products == before_products
+
 
 def test_ocr_returns_different_ticket_lines_separately_even_if_products_are_similar(
     client,

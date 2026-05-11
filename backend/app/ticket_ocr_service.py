@@ -49,12 +49,32 @@ _UNIT_NAME_RE = re.compile(r"^(\d+)?\s*(.+)$")
 _JUNK_DIGITS_RE = re.compile(r"\d+[Xx]?\d*")
 _MULTI_SPACE_RE = re.compile(r"\s+")
 
-_SKIP_TOKENS = frozenset({
-    "descripcion", "descripcio", "total", "subtotal", "iva",
-    "ticket", "factura", "importe", "import", "cantidad", "quantitat",
-    "unidad", "unitat", "precio", "preu", "nif", "cif", "fecha",
-    "data", "gracias", "gracies", "obrigado",
-})
+_SKIP_TOKENS = frozenset(
+    {
+        "descripcion",
+        "descripcio",
+        "total",
+        "subtotal",
+        "iva",
+        "ticket",
+        "factura",
+        "importe",
+        "import",
+        "cantidad",
+        "quantitat",
+        "unidad",
+        "unitat",
+        "precio",
+        "preu",
+        "nif",
+        "cif",
+        "fecha",
+        "data",
+        "gracias",
+        "gracies",
+        "obrigado",
+    }
+)
 
 # ── Constants OFF ─────────────────────────────────────────────────────────────
 
@@ -80,6 +100,12 @@ def validate_image(content_type: str | None, size: int) -> None:
             code="UNSUPPORTED_IMAGE_FORMAT",
             message="Format de imatge no suportat. Utilitza JPEG o PNG.",
             status_code=415,
+        )
+    if size == 0:
+        raise ImageValidationError(
+            code="EMPTY_FILE",
+            message="El fitxer de imatge no pot estar buit.",
+            status_code=400,
         )
     if size > MAX_FILE_SIZE_BYTES:
         raise ImageValidationError(
@@ -162,8 +188,8 @@ class OcrEngine:
     def __init__(self) -> None:
         try:
             import numpy as np  # noqa: F401
-            from PIL import Image  # noqa: F401
             from paddleocr import PaddleOCR
+            from PIL import Image  # noqa: F401
 
             base = _models_base_dir()
             det_dir = _resolve_model_dir(os.path.join(base, "det"))
@@ -172,9 +198,11 @@ class OcrEngine:
 
             logger.info(
                 "[OcrEngine] Inicialitzant PaddleOCR\n  det=%s\n  rec=%s\n  cls=%s",
-                det_dir, rec_dir, cls_dir,
+                det_dir,
+                rec_dir,
+                cls_dir,
             )
-            
+
             self._ocr = PaddleOCR(
                 use_angle_cls=True,
                 lang="en",
@@ -209,6 +237,7 @@ class OcrEngine:
         """
         import numpy as np
         from PIL import Image
+
         img = Image.open(io.BytesIO(image_bytes)).convert("RGB")
         return np.array(img)
 
@@ -335,8 +364,10 @@ def _search_off_by_name(name: str) -> list[dict]:
     }
     try:
         resp = requests.get(
-            _OFF_SEARCH_URL, params=params,
-            headers=OFF_HEADERS, timeout=_OFF_SEARCH_TIMEOUT,
+            _OFF_SEARCH_URL,
+            params=params,
+            headers=OFF_HEADERS,
+            timeout=_OFF_SEARCH_TIMEOUT,
         )
         if resp.status_code != 200:
             return []
