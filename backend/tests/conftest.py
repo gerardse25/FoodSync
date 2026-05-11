@@ -83,6 +83,10 @@ def app_modules(tmp_path, monkeypatch):
     inventory_modify = _optional_import("app.inventory_modify")
     inventory_delete_product = _optional_import("app.inventory_delete_product")
 
+    ticket_routes = _optional_import("app.ticket_routes")
+    ticket_schemas = _optional_import("app.ticket_schemas")
+    ticket_ocr_service = _optional_import("app.ticket_ocr_service")
+
     database.Base.metadata.drop_all(bind=database.engine)
     database.Base.metadata.create_all(bind=database.engine)
 
@@ -110,6 +114,9 @@ def app_modules(tmp_path, monkeypatch):
         "inventory_schemas": inventory_schemas,
         "inventory_modify": inventory_modify,
         "inventory_delete_product": inventory_delete_product,
+        "ticket_routes": ticket_routes,
+        "ticket_schemas": ticket_schemas,
+        "ticket_ocr_service": ticket_ocr_service,
     }
 
     main.app.dependency_overrides.clear()
@@ -812,3 +819,100 @@ def shared_home_with_single_product(
             "only_product": {"payload": only_payload, "db": only_product},
         },
     }
+
+
+@pytest.fixture
+def make_ocr_detected_item():
+    def _make_ocr_detected_item(
+        *,
+        nom="producte",
+        marca=None,
+        categoria="OTHER",
+        categoria_label=None,
+        quantitat=1,
+        preu="1.25",
+        data_caducitat=None,
+        data_compra=None,
+        quantitat_envas=None,
+        nutriscore=None,
+        imatge_url=None,
+        id_propietaris_privats=None,
+    ):
+        return {
+            "nom": nom,
+            "marca": marca,
+            "categoria": categoria,
+            "categoria_label": categoria_label,
+            "quantitat": quantitat,
+            "preu": preu,
+            "data_caducitat": data_caducitat,
+            "data_compra": data_compra,
+            "quantitat_envas": quantitat_envas,
+            "nutriscore": nutriscore,
+            "imatge_url": imatge_url,
+            "id_propietaris_privats": id_propietaris_privats or [],
+        }
+
+    return _make_ocr_detected_item
+
+
+@pytest.fixture
+def make_confirm_ticket_product():
+    def _make_confirm_ticket_product(
+        *,
+        nom="producte",
+        categoria="OTHER",
+        quantitat=1,
+        preu="1.25",
+        data_caducitat=None,
+        data_compra=None,
+        id_propietaris_privats=None,
+    ):
+        return {
+            "nom": nom,
+            "categoria": categoria,
+            "quantitat": quantitat,
+            "preu": preu,
+            "data_caducitat": data_caducitat,
+            "data_compra": data_compra,
+            "id_propietaris_privats": id_propietaris_privats or [],
+        }
+
+    return _make_confirm_ticket_product
+
+
+@pytest.fixture
+def mock_ticket_ocr_success(client, monkeypatch):
+    ticket_routes = client.app_modules.get("ticket_routes")
+    if ticket_routes is None:
+        import app.ticket_routes as ticket_routes
+
+    def _mock(items):
+        monkeypatch.setattr(ticket_routes, "validate_image", lambda **kwargs: None)
+        monkeypatch.setattr(
+            ticket_routes, "process_ticket_image", lambda image_bytes: items
+        )
+
+    return _mock
+
+
+@pytest.fixture
+def mock_ticket_ocr_failure(client, monkeypatch):
+    ticket_routes = client.app_modules.get("ticket_routes")
+    if ticket_routes is None:
+        import app.ticket_routes as ticket_routes
+
+    def _mock(exception):
+        monkeypatch.setattr(ticket_routes, "validate_image", lambda **kwargs: None)
+
+        def _raise(_image_bytes):
+            raise exception
+
+        monkeypatch.setattr(ticket_routes, "process_ticket_image", _raise)
+
+    return _mock
+
+
+@pytest.fixture
+def fake_png_bytes():
+    return b"fake-png-bytes"

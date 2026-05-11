@@ -26,3 +26,5 @@ Thumbs.db
 # Node (per frontend)
 node_modules/
 dist/
+
+.paddleocr_models/
