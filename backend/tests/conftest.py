@@ -825,10 +825,10 @@ def shared_home_with_single_product(
 def make_ocr_detected_item():
     def _make_ocr_detected_item(
         *,
-        nom="Llet",
+        nom="producte",
         marca=None,
-        categoria="MILK",
-        categoria_label="Llet",
+        categoria="OTHER",
+        categoria_label=None,
         quantitat=1,
         preu="1.25",
         data_caducitat=None,
@@ -860,8 +860,8 @@ def make_ocr_detected_item():
 def make_confirm_ticket_product():
     def _make_confirm_ticket_product(
         *,
-        nom="Llet",
-        categoria="MILK",
+        nom="producte",
+        categoria="OTHER",
         quantitat=1,
         preu="1.25",
         data_caducitat=None,

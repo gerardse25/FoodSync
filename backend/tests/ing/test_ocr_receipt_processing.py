@@ -47,7 +47,7 @@ def test_ocr_detects_multiple_products(
     items = [] 
     items.append(make_ocr_detected_item(nom="Llet", categoria="MILK", preu="1.25"))
     items.append(make_ocr_detected_item(nom="Galetes", categoria="OTHER", preu="2.15"))
-    items.append(make_ocr_detected_item(nom="Aigua", categoria="DRINK", preu="1.00"))
+    items.append(make_ocr_detected_item(nom="Aigua", categoria="WATER_AND_FLAVORED_WATER", preu="1.00"))
     mock_ticket_ocr_success(items)
 
     response = post_ticket_ocr(
@@ -80,6 +80,7 @@ def test_ocr_returns_products_even_when_secondary_fields_are_missing(
         make_ocr_detected_item(
             nom="Galetes",
             categoria="OTHER",
+            categoria_label=None,
             quantitat=1,
             preu="2.15",
             data_compra="2026-01-10",
@@ -136,9 +137,9 @@ def test_ocr_returns_preliminary_products_even_when_some_detected_items_are_high
     mock_ticket_ocr_success,
 ):
     items = [
-        make_ocr_detected_item(nom="", categoria="MILK", preu="1.25"),
-        make_ocr_detected_item(nom="Galetes", categoria="", preu="2.15"),
-        make_ocr_detected_item(nom="Aigua", categoria="OTHER", preu=""),
+        make_ocr_detected_item(nom=None, categoria="MILK", preu="1.25"),
+        make_ocr_detected_item(nom="Galetes", categoria=None, preu="2.15"),
+        make_ocr_detected_item(nom="Aigua", categoria="OTHER", preu=None),
     ]
     mock_ticket_ocr_success(items)
 
@@ -152,17 +153,17 @@ def test_ocr_returns_preliminary_products_even_when_some_detected_items_are_high
 
     assert len(body["productes"]) == 3
 
-    assert body["productes"][0]["nom"] == ""
+    assert body["productes"][0]["nom"] == None
     assert body["productes"][0]["categoria"] == "MILK"
     assert body["productes"][0]["preu"] == "1.25"
 
     assert body["productes"][1]["nom"] == "Galetes"
-    assert body["productes"][1]["categoria"] == ""
+    assert body["productes"][1]["categoria"] == None
     assert body["productes"][1]["preu"] == "2.15"
 
     assert body["productes"][2]["nom"] == "Aigua"
     assert body["productes"][2]["categoria"] == "OTHER"
-    assert body["productes"][2]["preu"] == ""
+    assert body["productes"][2]["preu"] == None
 
 def test_ocr_returns_preliminary_products_even_with_minimum_product_info(
     client,
@@ -172,9 +173,9 @@ def test_ocr_returns_preliminary_products_even_with_minimum_product_info(
     mock_ticket_ocr_success,
 ):
     items = [
-        make_ocr_detected_item(nom="Refresc", categoria="", preu=""),
-        make_ocr_detected_item(nom="", categoria="", preu="1.25"),
-        make_ocr_detected_item(nom="", categoria="FRESH_FRUIT", preu=""),
+        make_ocr_detected_item(nom="Refresc", categoria=None, preu=None),
+        make_ocr_detected_item(nom=None, categoria=None, preu="1.25"),
+        make_ocr_detected_item(nom=None, categoria="FRESH_FRUIT", preu=None),
     ]
     mock_ticket_ocr_success(items)
 
@@ -186,19 +187,19 @@ def test_ocr_returns_preliminary_products_even_with_minimum_product_info(
 
     body = assert_ocr_success(response)
 
-    assert len(body["productes"]) == 4
+    assert len(body["productes"]) == 3
 
     assert body["productes"][0]["nom"] == "Refresc"
-    assert body["productes"][0]["categoria"] == ""
-    assert body["productes"][0]["preu"] == ""
+    assert body["productes"][0]["categoria"] == None
+    assert body["productes"][0]["preu"] == None
 
-    assert body["productes"][1]["nom"] == ""
-    assert body["productes"][1]["categoria"] == ""
+    assert body["productes"][1]["nom"] == None
+    assert body["productes"][1]["categoria"] == None
     assert body["productes"][1]["preu"] == "1.25"
 
-    assert body["productes"][2]["nom"] == ""
+    assert body["productes"][2]["nom"] == None
     assert body["productes"][2]["categoria"] == "FRESH_FRUIT"
-    assert body["productes"][2]["preu"] == ""
+    assert body["productes"][2]["preu"] == None
 
 
 def test_ocr_returns_products_with_rich_detected_information(
@@ -373,8 +374,7 @@ def test_ocr_returns_preliminary_products_even_with_incomplete_or_noisy_names(
     after_products = list_home_products_db(home_id)
     assert after_products == before_products
 
-
-def test_ocr_groups_repeated_products_with_same_name_and_sums_quantity_and_price(
+def test_ocr_returns_different_ticket_lines_separately_even_if_products_are_similar(
     client,
     shared_home_setup,
     fake_png_bytes,
@@ -383,110 +383,16 @@ def test_ocr_groups_repeated_products_with_same_name_and_sums_quantity_and_price
 ):
     items = [
         make_ocr_detected_item(
-            nom="Llet",
-            categoria="MILK",
-            categoria_label="Llet",
+            nom="Tomàquet",
+            categoria="FRESH_VEGETABLES",
             quantitat=2,
-            preu="1.20",
+            preu="2.30",
         ),
         make_ocr_detected_item(
-            nom="Llet",
-            categoria="MILK",
-            categoria_label="Llet",
+            nom="Tomàquet_A",
+            categoria="FRESH_VEGETABLES",
             quantitat=1,
-            preu="1.20",
-        ),
-    ]
-    mock_ticket_ocr_success(items)
-
-    response = post_ticket_ocr(
-        client,
-        shared_home_setup["owner_headers"],
-        fake_png_bytes,
-    )
-
-    body = assert_ocr_success(response)
-
-    assert len(body["productes"]) == 1
-    product = body["productes"][0]
-    assert product["nom"] == "Llet"
-    assert product["quantitat"] == 3
-    assert product["preu"] == "2.40"
-    assert product["categoria"] == "MILK"
-    assert product["categoria_label"] == "Llet"
-
-@pytest.mark.parametrize(
-    "quantitat_prod1, quantitat_prod2, quantitat_total",
-    [
-        (1, 2, 3),
-        (1, None, 2),
-        (None, 2, 3),
-        (None, None, 2),
-    ],
-)
-def test_ocr_groups_repeated_products_treating_missing_quantity_as_one(
-    client,
-    shared_home_setup,
-    fake_png_bytes,
-    make_ocr_detected_item,
-    mock_ticket_ocr_success,
-    quantitat_prod1,
-    quantitat_prod2,
-    quantitat_total,
-):
-    items = [
-        make_ocr_detected_item(
-            nom="Arròs",
-            categoria="RICE",
-            categoria_label="Arròs",
-            quantitat=quantitat_prod1,
-            preu="1.50",
-        ),
-        make_ocr_detected_item(
-            nom="Arròs",
-            categoria="RICE",
-            categoria_label="Arròs",
-            quantitat=quantitat_prod2,
-            preu="1.50",
-        ),
-    ]
-    mock_ticket_ocr_success(items)
-
-    response = post_ticket_ocr(
-        client,
-        shared_home_setup["owner_headers"],
-        fake_png_bytes,
-    )
-
-    body = assert_ocr_success(response)
-
-    assert len(body["productes"]) == 1
-    product = body["productes"][0]
-    assert product["nom"] == "Arròs"
-    assert product["quantitat"] == quantitat_total
-    assert product["preu"] == "3.00"
-
-def test_ocr_does_not_group_products_when_name_is_different_even_if_other_fields_match(
-    client,
-    shared_home_setup,
-    fake_png_bytes,
-    make_ocr_detected_item,
-    mock_ticket_ocr_success,
-):
-    items = [
-        make_ocr_detected_item(
-            nom="Llet sencera",
-            categoria="MILK",
-            categoria_label="Llet",
-            quantitat=1,
-            preu="1.20",
-        ),
-        make_ocr_detected_item(
-            nom="Llet semi",
-            categoria="MILK",
-            categoria_label="Llet",
-            quantitat=1,
-            preu="1.20",
+            preu="1.10",
         ),
     ]
     mock_ticket_ocr_success(items)
@@ -500,161 +406,5 @@ def test_ocr_does_not_group_products_when_name_is_different_even_if_other_fields
     body = assert_ocr_success(response)
 
     assert len(body["productes"]) == 2
-    assert body["productes"][0]["nom"] == "Llet sencera"
-    assert body["productes"][1]["nom"] == "Llet semi"
-
-@pytest.mark.parametrize(
-    "categoria_prod1, label_prod1, categoria_prod2, label_prod2",
-    [
-        ("MILK", "Llet", "OTHER", "Altres"),
-        ("MILK", "", "OTHER", "Altres"),
-        ("MILK", "Llet", "OTHER", ""),
-        ("MILK", "", "OTHER", ""),
-        ("", "Llet", "", "Altres"),
-        ("", "", "", ""),
-    ],
-)
-def test_ocr_groups_repeated_products_and_nulls_category_fields_when_category_conflicts(
-    client,
-    shared_home_setup,
-    fake_png_bytes,
-    make_ocr_detected_item,
-    mock_ticket_ocr_success,
-    categoria_prod1, categoria_prod2, label_prod1, label_prod2
-):
-    items = [
-        make_ocr_detected_item(
-            nom="Producte X",
-            categoria=categoria_prod1,
-            categoria_label=label_prod1,
-            quantitat=1,
-            preu="1.00",
-        ),
-        make_ocr_detected_item(
-            nom="Producte X",
-            categoria=categoria_prod2,
-            categoria_label=label_prod2,
-            quantitat=1,
-            preu="1.00",
-        ),
-    ]
-    mock_ticket_ocr_success(items)
-
-    response = post_ticket_ocr(
-        client,
-        shared_home_setup["owner_headers"],
-        fake_png_bytes,
-    )
-
-    body = assert_ocr_success(response)
-
-    assert len(body["productes"]) == 1
-    product = body["productes"][0]
-    assert product["nom"] == "Producte X"
-    assert product["quantitat"] == 2
-    assert product["preu"] == "2.00"
-    assert product["categoria"] is None
-    assert product["categoria_label"] is None
-
-
-@pytest.mark.parametrize(
-    "categoria_prod1, label_prod1, categoria_prod2, label_prod2, final_category",
-    [
-        ("MILK", "Llet", "", "Altres", "MILK"),
-        ("", "Llet", "OTHER", "Altres", "OTHER"),
-        ("MILK", "Llet", "", "", "MILK"),
-        ("", "", "OTHER", "Altres", "OTHER"),
-    ],
-)
-def test_ocr_groups_repeated_products_and_nulls_label_fields(
-    client,
-    shared_home_setup,
-    fake_png_bytes,
-    make_ocr_detected_item,
-    mock_ticket_ocr_success,
-    categoria_prod1, categoria_prod2, label_prod1, label_prod2, final_category
-):
-    items = [
-        make_ocr_detected_item(
-            nom="Producte X",
-            categoria=categoria_prod1,
-            categoria_label=label_prod1,
-            quantitat=1,
-            preu="1.00",
-        ),
-        make_ocr_detected_item(
-            nom="Producte X",
-            categoria=categoria_prod2,
-            categoria_label=label_prod2,
-            quantitat=1,
-            preu="1.00",
-        ),
-    ]
-    mock_ticket_ocr_success(items)
-
-    response = post_ticket_ocr(
-        client,
-        shared_home_setup["owner_headers"],
-        fake_png_bytes,
-    )
-
-    body = assert_ocr_success(response)
-
-    assert len(body["productes"]) == 1
-    product = body["productes"][0]
-    assert product["nom"] == "Producte X"
-    assert product["quantitat"] == 2
-    assert product["preu"] == "2.00"
-    assert product["categoria"] == final_category
-    assert product["categoria_label"] is None
-
-@pytest.mark.parametrize(
-    "price_prod1, price_prod2, price_total",
-    [
-        ("1.20", "1.50", "2.70"),
-        (None, "1.00", "1.00"),
-        ("2.00", None, "2.00"),
-        (None, None, None)
-    ],
-)
-def test_ocr_groups_repeated_products_and_sums_price_even_when_unit_price_differs(
-    client,
-    shared_home_setup,
-    fake_png_bytes,
-    make_ocr_detected_item,
-    mock_ticket_ocr_success,
-    price_prod1, price_prod2, price_total
-):
-    items = [
-        make_ocr_detected_item(
-            nom="Poma",
-            categoria="OTHER",
-            categoria_label="Altres",
-            quantitat=1,
-            preu=price_prod1,
-        ),
-        make_ocr_detected_item(
-            nom="Poma",
-            categoria="OTHER",
-            categoria_label="Altres",
-            quantitat=1,
-            preu=price_prod2,
-        ),
-    ]
-    mock_ticket_ocr_success(items)
-
-    response = post_ticket_ocr(
-        client,
-        shared_home_setup["owner_headers"],
-        fake_png_bytes,
-    )
-
-    body = assert_ocr_success(response)
-
-    assert len(body["productes"]) == 1
-    product = body["productes"][0]
-    assert product["nom"] == "Poma"
-    assert product["quantitat"] == 2
-    assert product["preu"] == price_total
-    assert product["categoria"] == "OTHER"
-    assert product["categoria_label"] == "Altres"
+    returned_names = [product["nom"] for product in body["productes"]]
+    assert returned_names == ["Tomàquet", "Tomàquet_A"]

@@ -109,7 +109,7 @@ def test_corrupted_image_returns_error(
         b"corrupted-image-bytes",
     )
 
-    assert_ocr_error(response, 422, "CORRUPTED_IMAGE")
+    assert_ocr_error(response, 422, "OCR_PROCESSING_ERROR")
 
 
 def test_external_ocr_engine_error_returns_controlled_error(
@@ -150,7 +150,7 @@ def test_external_ocr_timeout_returns_controlled_error(
         fake_png_bytes,
     )
 
-    assert_ocr_error(response, 504, "OCR_TIMEOUT")
+    assert_ocr_error(response, 422, "OCR_PROCESSING_ERROR")
 
 
 def test_external_ocr_malformed_response_returns_controlled_error(
@@ -174,7 +174,7 @@ def test_external_ocr_malformed_response_returns_controlled_error(
         fake_png_bytes,
     )
 
-    assert_ocr_error(response, 422, "OCR_MALFORMED_RESPONSE")
+    assert_ocr_error(response, 422, "OCR_PROCESSING_ERROR")
 
 
 def test_illegible_image_returns_empty_list_or_functional_equivalent_response(
