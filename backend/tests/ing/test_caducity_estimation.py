@@ -1,6 +1,5 @@
 import pytest
 from freezegun import freeze_time
-from datetime import date
 
 CADUCITY_ENTRY_ENDPOINT = "/inventory/expiration/estimate"
 
@@ -41,6 +40,7 @@ def test_valid_category_and_purchase_date_return_valid_expiration(
     assert body["data_caducitat"] == "2027-01-01"
     assert body["data_caducitat_estimada"] is True
 
+
 def test_two_valid_categories_return_different_estimated_expirations(
     client,
     shared_home_setup,
@@ -75,7 +75,6 @@ def test_two_valid_categories_return_different_estimated_expirations(
     assert poultry_body["data_caducitat"] == "2026-01-03"
 
     assert rice_body["data_caducitat"] != poultry_body["data_caducitat"]
-
 
 
 def test_invalid_category_return_error(
@@ -117,6 +116,7 @@ def test_purchase_date_same_as_system_date_returns_estimated_expiration(
     assert body["data_caducitat"] == "2027-01-10"
     assert body["data_caducitat_estimada"] is True
 
+
 @pytest.mark.parametrize(
     "purchase_date, expected_expiration_date",
     [
@@ -156,14 +156,8 @@ def test_purchase_date_within_valid_limit_returns_estimated_expiration(
         ("2026-01-11", "PURCHASE_DATE_IN_FUTURE"),
     ],
 )
-def test_invalid_date_return_error(
-    client,
-    shared_home_setup,
-    date, 
-    expected_code
-):
+def test_invalid_date_return_error(client, shared_home_setup, date, expected_code):
     headers = shared_home_setup["owner_headers"]
-
 
     with freeze_time("2026-01-10 12:00:00"):
         response = client.post(
@@ -175,7 +169,6 @@ def test_invalid_date_return_error(
         body = response.json()
         assert body["code"] == expected_code
         assert "detail" in body
-
 
 
 def test_expiration_estimation_does_not_depend_on_hour_or_minutes(
@@ -207,4 +200,6 @@ def test_expiration_estimation_does_not_depend_on_hour_or_minutes(
     assert morning_body["data_compra"] == "2026-01-10"
     assert night_body["data_compra"] == "2026-01-10"
     assert morning_body["data_caducitat"] == night_body["data_caducitat"]
-    assert morning_body["dies_caducitat_estimats"] == night_body["dies_caducitat_estimats"]
+    assert (
+        morning_body["dies_caducitat_estimats"] == night_body["dies_caducitat_estimats"]
+    )

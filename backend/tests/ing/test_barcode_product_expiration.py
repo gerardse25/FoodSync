@@ -81,7 +81,9 @@ def list_inventory_products_db(app_modules, home_id):
                     "price": str(row.preu) if row.preu is not None else None,
                     "purchase_date": row.data_compra,
                     "expiration_date": row.data_caducitat,
-                    "expiration_estimated": getattr(row, "data_caducitat_estimada", None),
+                    "expiration_estimated": getattr(
+                        row, "data_caducitat_estimada", None
+                    ),
                     "registration_method": row.metode_registre,
                     "owner_user_ids": owner_ids,
                 }
@@ -117,6 +119,7 @@ def make_barcode_confirm_payload(
         payload["data_caducitat"] = data_caducitat
 
     return payload
+
 
 def test_barcode_preview_returns_product_data_and_estimated_expiration_for_local_catalog(
     client,
@@ -237,7 +240,10 @@ def test_barcode_preview_different_categories_return_different_estimated_expirat
 
     assert rice_body["product"]["data_caducitat"] == "2027-01-10"
     assert other_body["product"]["data_caducitat"] == "2026-02-09"
-    assert rice_body["product"]["data_caducitat"] != other_body["product"]["data_caducitat"]
+    assert (
+        rice_body["product"]["data_caducitat"]
+        != other_body["product"]["data_caducitat"]
+    )
 
 
 def test_barcode_preview_does_not_persist_product_until_confirm(
@@ -300,7 +306,11 @@ def test_barcode_preview_does_not_persist_product_until_confirm(
     assert len(after_confirm_rows) == before_count + 1
 
     created = next(
-        (row for row in after_confirm_rows if row["catalog_id"] == seeded["id_producte_cataleg"]),
+        (
+            row
+            for row in after_confirm_rows
+            if row["catalog_id"] == seeded["id_producte_cataleg"]
+        ),
         None,
     )
     assert created is not None
@@ -542,7 +552,7 @@ def test_confirm_barcode_rejects_invalid_purchase_dates(
             headers=headers,
         )
 
-    assert confirm_response.status_code in (400,422), confirm_response.text
+    assert confirm_response.status_code in (400, 422), confirm_response.text
     body = confirm_response.json()
     assert body["code"] == expected_code
 

@@ -1,7 +1,5 @@
 import pytest
-
 from freezegun import freeze_time
-
 
 MANUAL_ENTRY_ENDPOINT = "/inventory/manual"
 PRODUCT_NAME_MAX_LENGTH = 100
@@ -50,20 +48,21 @@ def test_add_product_manually_with_expiration_date(
             preu="2.50",
             categoria=CATEGORY_EXAMPLE,
             quantitat=3,
-            data_caducitat="2027-01-10"
+            data_caducitat="2027-01-10",
         )
         response = client.post(MANUAL_ENTRY_ENDPOINT, json=product, headers=headers)
 
     assert response.status_code == 201, response.text
     body = response.json()
     assert body["code"] == "PRODUCT_CREATED"
-    
+
     created = body["producte"]
     assert created["data_caducitat"] == product["data_caducitat"]
 
     products = list_home_products_db(home_id)
     names = {item["name"] for item in products}
     assert product["nom"] in names
+
 
 def test_add_product_manually_with_expiration_date_different_to_backend_rules(
     client,
@@ -79,14 +78,14 @@ def test_add_product_manually_with_expiration_date_different_to_backend_rules(
             preu="2.50",
             categoria=CATEGORY_EXAMPLE,
             quantitat=3,
-            data_caducitat="2026-02-10"
+            data_caducitat="2026-02-10",
         )
         response = client.post(MANUAL_ENTRY_ENDPOINT, json=product, headers=headers)
 
     assert response.status_code == 201, response.text
     body = response.json()
     assert body["code"] == "PRODUCT_CREATED"
-    
+
     created = body["producte"]
     assert created["data_caducitat"] == product["data_caducitat"]
 
@@ -109,14 +108,14 @@ def test_add_product_manually_with_buy_date(
             preu="2.50",
             categoria=CATEGORY_EXAMPLE,
             quantitat=3,
-            data_compra="2026-01-10"
+            data_compra="2026-01-10",
         )
         response = client.post(MANUAL_ENTRY_ENDPOINT, json=product, headers=headers)
 
     assert response.status_code == 201, response.text
     body = response.json()
     assert body["code"] == "PRODUCT_CREATED"
-    
+
     created = body["producte"]
     assert created["data_compra"] == product["data_compra"]
     assert created["data_caducitat"] == "2027-01-10"
@@ -140,14 +139,14 @@ def test_add_product_manually_with_buy_date_and_different_category(
             preu="2.50",
             categoria="OTHER",
             quantitat=3,
-            data_compra="2026-01-01"
+            data_compra="2026-01-01",
         )
         response = client.post(MANUAL_ENTRY_ENDPOINT, json=product, headers=headers)
 
     assert response.status_code == 201, response.text
     body = response.json()
     assert body["code"] == "PRODUCT_CREATED"
-    
+
     created = body["producte"]
     assert created["data_compra"] == product["data_compra"]
     assert created["data_caducitat"] == "2026-01-31"
@@ -179,7 +178,7 @@ def test_add_product_manually_with_expiration_and_buy_date(
     assert response.status_code == 201, response.text
     body = response.json()
     assert body["code"] == "PRODUCT_CREATED"
-    
+
     created = body["producte"]
     assert created["data_compra"] == product["data_compra"]
     assert created["data_caducitat"] == product["data_caducitat"]
@@ -211,7 +210,7 @@ def test_add_product_manually_with_expiration_and_buy_date_different_to_backend_
     assert response.status_code == 201, response.text
     body = response.json()
     assert body["code"] == "PRODUCT_CREATED"
-    
+
     created = body["producte"]
     assert created["data_compra"] == product["data_compra"]
     assert created["data_caducitat"] == product["data_caducitat"]
@@ -241,7 +240,7 @@ def test_add_product_manually_with_no_date(
     assert response.status_code == 201, response.text
     body = response.json()
     assert body["code"] == "PRODUCT_CREATED"
-    
+
     created = body["producte"]
     assert created["data_compra"] == "2026-01-10"
     assert created["data_caducitat"] == "2027-01-10"
@@ -325,4 +324,3 @@ def test_add_product_manually_with_limit_valid_date(
     products = list_home_products_db(home_id)
     names = {item["name"] for item in products}
     assert product["nom"] in names
-
