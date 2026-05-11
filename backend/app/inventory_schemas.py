@@ -153,6 +153,12 @@ class BarcodeLookupProductSchema(BaseModel):
     nutriscore: Optional[str] = None
     imatge_url: Optional[str] = None
 
+    # Preview de caducitat per a la pantalla de validació.
+    # Encara no es persisteix res fins que l'usuari confirmi.
+    data_compra: Optional[date] = None
+    data_caducitat: Optional[date] = None
+    data_caducitat_estimada: bool = False
+
 
 class BarcodeLookupResponseSchema(BaseModel):
     found: bool

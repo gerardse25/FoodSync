@@ -38,7 +38,10 @@ LABEL_TO_CATEGORY_VALUE = {
 
 
 def _json_error(detail: str, status_code: int = 400, code: Optional[str] = None):
-    payload = {"error": detail}
+    payload = {
+        "detail": detail,
+        "error": detail,
+    }
     if code:
         payload["code"] = code
     return JSONResponse(status_code=status_code, content=payload)
@@ -274,6 +277,34 @@ def _resolve_expiration_or_error(
             422,
             "EXPIRATION_BEFORE_PURCHASE_DATE",
         )
+
+
+def _build_barcode_expiration_preview(category_value: str | None):
+    """
+    Calcula la data de compra i caducitat estimada que es mostrarà al frontend
+    quan es fa preview d'un producte per codi de barres.
+
+    No persisteix res a BBDD. Només prepara dades per a la pantalla de validació.
+    """
+    if not category_value:
+        return None, None, False
+
+    try:
+        category = ProductCategory(category_value)
+    except ValueError:
+        return None, None, False
+
+    expiration = resolve_expiration_fields(
+        category=category,
+        purchase_date=None,
+        provided_expiration_date=None,
+    )
+
+    return (
+        expiration.data_compra,
+        expiration.data_caducitat,
+        expiration.data_caducitat_estimada,
+    )
 
 
 @router.get("", response_model=None)
@@ -711,6 +742,12 @@ def lookup_inventory_product_by_barcode(
             category_value = LABEL_TO_CATEGORY_VALUE.get(category.nom)
             category_label = category.nom
 
+        (
+            preview_purchase_date,
+            preview_expiration_date,
+            preview_expiration_estimated,
+        ) = _build_barcode_expiration_preview(category_value)
+
         return schemas.BarcodeLookupResponseSchema(
             found=True,
             barcode=barcode,
@@ -724,6 +761,9 @@ def lookup_inventory_product_by_barcode(
                 quantitat_envas=catalog_product.quantitat_envas,
                 nutriscore=catalog_product.nutriscore_grade,
                 imatge_url=catalog_product.imatge_url,
+                data_compra=preview_purchase_date,
+                data_caducitat=preview_expiration_date,
+                data_caducitat_estimada=preview_expiration_estimated,
             ),
         )
 
@@ -756,6 +796,12 @@ def lookup_inventory_product_by_barcode(
         except ValueError:
             category_label = None
 
+    (
+        preview_purchase_date,
+        preview_expiration_date,
+        preview_expiration_estimated,
+    ) = _build_barcode_expiration_preview(category_value)
+
     return schemas.BarcodeLookupResponseSchema(
         found=True,
         barcode=barcode,
@@ -769,6 +815,9 @@ def lookup_inventory_product_by_barcode(
             quantitat_envas=result.get("package_quantity_label"),
             nutriscore=result.get("nutriscore_grade"),
             imatge_url=result.get("image_url"),
+            data_compra=preview_purchase_date,
+            data_caducitat=preview_expiration_date,
+            data_caducitat_estimada=preview_expiration_estimated,
         ),
     )
 
