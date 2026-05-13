@@ -1,6 +1,12 @@
 # Variables sensibles
 .env
 
+# Python virtual environments
+.venv/
+.venv*/
+venv/
+env/
+
 # Python
 __pycache__/
 *.pyc
@@ -26,3 +32,5 @@ Thumbs.db
 # Node (per frontend)
 node_modules/
 dist/
+
+.paddleocr_models/
