@@ -828,7 +828,7 @@ def make_ocr_detected_item():
         nom="producte",
         marca=None,
         categoria="OTHER",
-        categoria_label=None,
+        categoria_label="none",
         quantitat=1,
         preu="1.25",
         data_caducitat=None,

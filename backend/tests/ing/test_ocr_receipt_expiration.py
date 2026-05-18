@@ -4,12 +4,6 @@ from freezegun import freeze_time
 OCR_CONFIRM_ENDPOINT = "/inventory/ticket/confirm"
 CATEGORY_EXAMPLE = "RICE"
 
-# TODO: Quitar cuando el backend del ocr tenga acoplado el de caducidad
-pytestmark = pytest.mark.xfail(
-    reason="La integració de caducitat al flux OCR encara no està implementada",
-    strict=False,
-)
-
 
 def assert_confirm_success(response, expected_count):
     assert response.status_code == 200, response.text

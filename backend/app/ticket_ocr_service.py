@@ -191,26 +191,12 @@ class OcrEngine:
             from paddleocr import PaddleOCR
             from PIL import Image  # noqa: F401
 
-            base = _models_base_dir()
-            det_dir = _resolve_model_dir(os.path.join(base, "det"))
-            rec_dir = _resolve_model_dir(os.path.join(base, "rec"))
-            cls_dir = _resolve_model_dir(os.path.join(base, "cls"))
-
-            logger.info(
-                "[OcrEngine] Inicialitzant PaddleOCR\n  det=%s\n  rec=%s\n  cls=%s",
-                det_dir,
-                rec_dir,
-                cls_dir,
-            )
-
+            logger.info("[OcrEngine] Inicialitzant PaddleOCR ")
             self._ocr = PaddleOCR(
                 use_angle_cls=True,
                 lang="en",
                 use_gpu=False,
                 show_log=False,
-                det_model_dir=det_dir,
-                rec_model_dir=rec_dir,
-                cls_model_dir=cls_dir,
             )
             logger.info("[OcrEngine] PaddleOCR llest.")
 
@@ -248,7 +234,6 @@ class OcrEngine:
         """
         img_array = self._to_numpy(image_bytes)
         resultado = self._ocr.ocr(img_array, cls=True)
-
         if not resultado or resultado[0] is None:
             return []
 

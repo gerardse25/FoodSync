@@ -10,9 +10,10 @@ bcrypt==4.0.1
 httpx
 pytest
 requests
-freezegun 
-python-multipart
+tzdata
+freezegun
+paddlepaddle==2.6.2
+paddleocr==2.7.3
 pillow
 numpy
-paddleocr
-paddlepaddle
+python-multipart

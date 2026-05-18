@@ -48,6 +48,7 @@ class OcrDetectedProduct(BaseModel):
     # Dates
     data_caducitat: Optional[date] = None
     data_compra: Optional[date] = None
+    data_caducitat_estimada: bool = False
 
     # Enriquiment OFF
     quantitat_envas: Optional[str] = None
@@ -97,6 +98,7 @@ class ConfirmTicketProductItem(BaseModel):
 
     data_caducitat: Optional[date] = None
     data_compra: Optional[date] = None
+    data_caducitat_estimada: bool = False
     id_propietaris_privats: List[UUID] = Field(default_factory=list)
 
     model_config = ConfigDict(populate_by_name=True)
@@ -119,6 +121,7 @@ class ConfirmedProductItem(BaseModel):
     preu: Optional[str] = None
     data_compra: Optional[date] = None
     data_caducitat: Optional[date] = None
+    data_caducitat_estimada: bool = False
     metode_registre: str
     owner_user_ids: List[str] = Field(default_factory=list)
 

@@ -1,6 +1,12 @@
 # Variables sensibles
 .env
 
+# Python virtual environments
+.venv/
+.venv*/
+venv/
+env/
+
 # Python
 __pycache__/
 *.pyc

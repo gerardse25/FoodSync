@@ -17,7 +17,7 @@ Principis:
 from __future__ import annotations
 
 import logging
-from datetime import datetime
+from datetime import date, datetime
 
 from fastapi import APIRouter, Depends, UploadFile
 from fastapi.responses import JSONResponse
@@ -26,6 +26,12 @@ from sqlalchemy.orm import Session
 import app.auth
 import app.ticket_schemas as ticket_schemas
 from app.database import get_db
+from app.expiration_service import (
+    ExpirationDateBeforePurchaseDate,
+    PurchaseDateInFuture,
+    PurchaseDateTooOld,
+    resolve_expiration_fields,
+)
 from app.inventory_models import CatalogProduct, InventoryProduct, InventoryProductOwner
 from app.inventory_routes import (
     _get_active_home,
@@ -45,6 +51,27 @@ from app.ticket_ocr_service import (
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/inventory/ticket", tags=["inventory", "ticket"])
+
+
+def _parse_optional_date(value):
+    """
+    L'OCR o els tests poden retornar dates com string ISO: '2026-01-10'.
+    Els schemas Pydantic ho convertirien després, però aquí necessitem
+    convertir-ho abans de calcular la caducitat.
+    """
+    if value is None:
+        return None
+
+    if isinstance(value, date):
+        return value
+
+    if isinstance(value, str):
+        try:
+            return date.fromisoformat(value)
+        except ValueError:
+            return None
+
+    return None
 
 
 # ── POST /inventory/ticket/ocr ────────────────────────────────────────────────
@@ -108,18 +135,43 @@ async def ocr_ticket(
         )
 
     # 4. Construir OcrDetectedProduct per cada ítem detectat
+    #    i afegir preview de caducitat estimada si ja tenim categoria.
     productes = []
     for item in detected_items:
+        category = item.get("categoria")
+
+        preview_purchase_date = _parse_optional_date(item.get("data_compra"))
+        preview_expiration_date = _parse_optional_date(item.get("data_caducitat"))
+        preview_expiration_estimated = False
+
+        has_any_date = (
+            preview_purchase_date is not None or preview_expiration_date is not None
+        )
+
+        if category is not None and has_any_date:
+            expiration, expiration_error = _resolve_ticket_expiration_or_error(
+                category=category,
+                purchase_date=preview_purchase_date,
+                expiration_date=preview_expiration_date,
+            )
+            if expiration_error:
+                return expiration_error
+
+            preview_purchase_date = expiration.data_compra
+            preview_expiration_date = expiration.data_caducitat
+            preview_expiration_estimated = expiration.data_caducitat_estimada
+
         productes.append(
             ticket_schemas.OcrDetectedProduct(
                 nom=item.get("nom"),
                 marca=item.get("marca"),
-                categoria=item.get("categoria"),
+                categoria=category,
                 categoria_label=item.get("categoria_label"),
                 quantitat=item.get("quantitat"),
                 preu=item.get("preu"),
-                data_caducitat=item.get("data_caducitat"),
-                data_compra=item.get("data_compra"),
+                data_caducitat=preview_expiration_date,
+                data_compra=preview_purchase_date,
+                data_caducitat_estimada=preview_expiration_estimated,
                 quantitat_envas=item.get("quantitat_envas"),
                 nutriscore=item.get("nutriscore"),
                 imatge_url=item.get("imatge_url"),
@@ -207,6 +259,14 @@ def confirm_ticket(
         if validation_error:
             return validation_error
 
+        expiration, expiration_error = _resolve_ticket_expiration_or_error(
+            category=prod_item.categoria,
+            purchase_date=prod_item.data_compra,
+            expiration_date=prod_item.data_caducitat,
+        )
+        if expiration_error:
+            return expiration_error
+
         owner_ids_normalized: list = []
         if prod_item.id_propietaris_privats:
             owner_ids_normalized, owner_error = _validate_owner_list(
@@ -231,9 +291,9 @@ def confirm_ticket(
                 "item": prod_item,
                 "name": name,
                 "owner_ids": owner_ids_normalized,
+                "expiration": expiration,
             }
         )
-
     # 3. Persistir productes
     guardats: list[ticket_schemas.ConfirmedProductItem] = []
 
@@ -241,6 +301,7 @@ def confirm_ticket(
         prod_item = validated_product["item"]
         name = validated_product["name"]
         owner_ids_normalized = validated_product["owner_ids"]
+        expiration = validated_product["expiration"]
 
         # Categoria → fila a BD
         category_row = _get_or_create_category_row(prod_item.categoria, db)
@@ -273,9 +334,10 @@ def confirm_ticket(
             id_llar=home.id,
             id_producte_cataleg=catalog_product.id_producte_cataleg,
             quantitat=prod_item.quantitat,
-            data_caducitat=prod_item.data_caducitat,
+            data_caducitat=expiration.data_caducitat,
+            data_caducitat_estimada=expiration.data_caducitat_estimada,
             preu=prod_item.preu,
-            data_compra=prod_item.data_compra,
+            data_compra=expiration.data_compra,
             metode_registre="receipt",
             es_privat=is_private,
         )
@@ -301,6 +363,7 @@ def confirm_ticket(
                 preu=str(inv_product.preu) if inv_product.preu is not None else None,
                 data_compra=inv_product.data_compra,
                 data_caducitat=inv_product.data_caducitat,
+                data_caducitat_estimada=inv_product.data_caducitat_estimada,
                 metode_registre=inv_product.metode_registre,
                 owner_user_ids=[str(oid) for oid in owner_ids_normalized],
             )
@@ -314,3 +377,44 @@ def confirm_ticket(
         missatge=f"S'han guardat {len(guardats)} producte(s) a l'inventari.",
         productes_guardats=guardats,
     )
+
+
+def _resolve_ticket_expiration_or_error(
+    category,
+    purchase_date,
+    expiration_date,
+):
+    """
+    Reutilitza la mateixa regla de caducitats que manual i barcode:
+    - Si data_compra és None, el servei usa la data actual.
+    - Si data_caducitat és None, s'estima per categoria.
+    - Si data_caducitat arriba informada, es respecta i deixa de ser estimada.
+    """
+    try:
+        expiration = resolve_expiration_fields(
+            category=category,
+            purchase_date=purchase_date,
+            provided_expiration_date=expiration_date,
+        )
+        return expiration, None
+
+    except PurchaseDateTooOld:
+        return None, _json_error(
+            "La data de compra no pot tenir més d'un any d'antiguitat.",
+            422,
+            "PURCHASE_DATE_TOO_OLD",
+        )
+
+    except PurchaseDateInFuture:
+        return None, _json_error(
+            "La data de compra no pot ser posterior a la data actual.",
+            422,
+            "PURCHASE_DATE_IN_FUTURE",
+        )
+
+    except ExpirationDateBeforePurchaseDate:
+        return None, _json_error(
+            "La data de caducitat no pot ser anterior a la data de compra.",
+            422,
+            "EXPIRATION_BEFORE_PURCHASE_DATE",
+        )
