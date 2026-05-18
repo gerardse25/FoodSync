@@ -52,6 +52,7 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/inventory/ticket", tags=["inventory", "ticket"])
 
+
 def _parse_optional_date(value):
     """
     L'OCR o els tests poden retornar dates com string ISO: '2026-01-10'.
@@ -144,9 +145,8 @@ async def ocr_ticket(
         preview_expiration_estimated = False
 
         has_any_date = (
-    preview_purchase_date is not None
-    or preview_expiration_date is not None
-)
+            preview_purchase_date is not None or preview_expiration_date is not None
+        )
 
         if category is not None and has_any_date:
             expiration, expiration_error = _resolve_ticket_expiration_or_error(
@@ -258,7 +258,7 @@ def confirm_ticket(
         validation_error = _validate_price_quantity(prod_item.preu, prod_item.quantitat)
         if validation_error:
             return validation_error
-        
+
         expiration, expiration_error = _resolve_ticket_expiration_or_error(
             category=prod_item.categoria,
             purchase_date=prod_item.data_compra,
@@ -287,13 +287,13 @@ def confirm_ticket(
                 )
 
         validated_products.append(
-        {
-            "item": prod_item,
-            "name": name,
-            "owner_ids": owner_ids_normalized,
-            "expiration": expiration,
-        }
-    )
+            {
+                "item": prod_item,
+                "name": name,
+                "owner_ids": owner_ids_normalized,
+                "expiration": expiration,
+            }
+        )
     # 3. Persistir productes
     guardats: list[ticket_schemas.ConfirmedProductItem] = []
 
@@ -377,6 +377,7 @@ def confirm_ticket(
         missatge=f"S'han guardat {len(guardats)} producte(s) a l'inventari.",
         productes_guardats=guardats,
     )
+
 
 def _resolve_ticket_expiration_or_error(
     category,

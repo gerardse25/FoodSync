@@ -9,7 +9,6 @@ from app.home_routes import router as home_router
 from app.inventory_delete_product import router as inventory_delete_router
 from app.inventory_modify import router as inventory_modify_router
 from app.inventory_routes import router as inventory_router
-from app.ticket_routes import router as ticket_router
 from app.routes import router
 from app.ticket_routes import router as ticket_router
 

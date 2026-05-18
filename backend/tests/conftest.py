@@ -880,6 +880,7 @@ def make_confirm_ticket_product():
 
     return _make_confirm_ticket_product
 
+
 @pytest.fixture
 def mock_ticket_ocr_success(client, monkeypatch):
     ticket_routes = client.app_modules.get("ticket_routes")
@@ -888,7 +889,9 @@ def mock_ticket_ocr_success(client, monkeypatch):
 
     def _mock(items):
         monkeypatch.setattr(ticket_routes, "validate_image", lambda **kwargs: None)
-        monkeypatch.setattr(ticket_routes, "process_ticket_image", lambda image_bytes: items)
+        monkeypatch.setattr(
+            ticket_routes, "process_ticket_image", lambda image_bytes: items
+        )
 
     return _mock
 
@@ -908,6 +911,7 @@ def mock_ticket_ocr_failure(client, monkeypatch):
         monkeypatch.setattr(ticket_routes, "process_ticket_image", _raise)
 
     return _mock
+
 
 @pytest.fixture
 def fake_png_bytes():

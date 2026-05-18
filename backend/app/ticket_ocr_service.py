@@ -191,16 +191,14 @@ class OcrEngine:
             from paddleocr import PaddleOCR
             from PIL import Image  # noqa: F401
 
-            
             logger.info("[OcrEngine] Inicialitzant PaddleOCR ")
             self._ocr = PaddleOCR(
-            use_angle_cls=True,
-            lang="en",
-            use_gpu=False,
-            show_log=False,
+                use_angle_cls=True,
+                lang="en",
+                use_gpu=False,
+                show_log=False,
             )
             logger.info("[OcrEngine] PaddleOCR llest.")
-
 
         except ImportError as exc:
             raise RuntimeError(
