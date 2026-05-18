@@ -4,11 +4,13 @@ from fastapi.responses import JSONResponse
 import app.home_models
 import app.inventory_models
 import app.models
+import app.notification_models
 from app.database import Base, engine
 from app.home_routes import router as home_router
 from app.inventory_delete_product import router as inventory_delete_router
 from app.inventory_modify import router as inventory_modify_router
 from app.inventory_routes import router as inventory_router
+from app.notification_routes import router as notification_router
 from app.routes import router
 from app.ticket_routes import router as ticket_router
 
@@ -22,6 +24,7 @@ app.include_router(inventory_router)
 app.include_router(inventory_modify_router)
 app.include_router(inventory_delete_router)
 app.include_router(ticket_router)
+app.include_router(notification_router)
 
 # IMPORTANT:
 # product_router queda fora del main en aquesta branca per evitar
