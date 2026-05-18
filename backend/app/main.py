@@ -11,6 +11,7 @@ from app.inventory_modify import router as inventory_modify_router
 from app.inventory_routes import router as inventory_router
 from app.ticket_routes import router as ticket_router
 from app.routes import router
+from app.ticket_routes import router as ticket_router
 
 app = FastAPI()
 
