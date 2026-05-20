@@ -353,6 +353,7 @@ def confirm_ticket(
                     user_id=owner_id,
                 )
             )
+        db.flush()
 
         guardats.append(
             ticket_schemas.ConfirmedProductItem(

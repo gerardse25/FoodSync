@@ -140,6 +140,37 @@ def _add_notification_if_missing(
     return True
 
 
+def _remove_member_joined_notifications_for_home(db: Session, home_id) -> None:
+    active_member_count = (
+        db.query(HomeMembership)
+        .filter(
+            HomeMembership.home_id == home_id,
+            HomeMembership.is_active.is_(True),
+        )
+        .count()
+    )
+    if active_member_count <= 3:
+        return
+
+    event_prefix = f"home_member_joined:{home_id}:"
+    latest_join_notification = (
+        db.query(Notification)
+        .filter(
+            Notification.tipus == NOTIFICATION_TYPE_HOME_MEMBER_JOINED,
+            Notification.event_key.like(f"{event_prefix}%"),
+        )
+        .order_by(Notification.created_at.desc())
+        .first()
+    )
+    if latest_join_notification is None:
+        return
+
+    db.query(Notification).filter(
+        Notification.tipus == NOTIFICATION_TYPE_HOME_MEMBER_JOINED,
+        Notification.event_key == latest_join_notification.event_key,
+    ).delete(synchronize_session=False)
+
+
 def notify_home_member_joined(
     db: Session,
     *,
@@ -155,6 +186,9 @@ def notify_home_member_joined(
 
     created_count = 0
     for recipient in _active_users_for_home(db, home_id):
+        if recipient.id == joined_user.id:
+            continue
+
         if _add_notification_if_missing(
             db,
             user_id=recipient.id,
@@ -176,15 +210,38 @@ def notify_home_product_added(
     product_name: str,
     added_by: User,
 ) -> int:
-    if inventory_product.es_privat:
-        return 0
-
     event_key = f"home_product_added:{inventory_product.id_inventari}"
     title = "Nou producte a l'inventari"
     message = f"{added_by.username} ha afegit {product_name} a l'inventari."
 
     created_count = 0
-    for recipient in _active_users_for_home(db, home_id):
+    _remove_member_joined_notifications_for_home(db, home_id)
+
+    if inventory_product.es_privat:
+        recipients = (
+            db.query(User)
+            .join(InventoryProductOwner, InventoryProductOwner.user_id == User.id)
+            .join(
+                HomeMembership,
+                and_(
+                    HomeMembership.user_id == User.id,
+                    HomeMembership.home_id == home_id,
+                    HomeMembership.is_active.is_(True),
+                ),
+            )
+            .filter(
+                InventoryProductOwner.id_inventari == inventory_product.id_inventari,
+                User.is_active.is_(True),
+            )
+            .all()
+        )
+    else:
+        recipients = _active_users_for_home(db, home_id)
+
+    for recipient in recipients:
+        if recipient.id == added_by.id:
+            continue
+
         if _add_notification_if_missing(
             db,
             user_id=recipient.id,

@@ -691,6 +691,7 @@ def create_inventory_product_manual(
                 user_id=owner_id,
             )
         )
+    db.flush()
 
     home.updated_at = datetime.utcnow()
     notify_home_product_added(
@@ -994,6 +995,7 @@ def confirm_and_add_barcode_product(
                 user_id=owner_id,
             )
         )
+    db.flush()
 
     home.updated_at = datetime.utcnow()
     notify_home_product_added(
