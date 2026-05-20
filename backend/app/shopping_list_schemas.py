@@ -32,3 +32,18 @@ class ConsumeInventoryItemResponseData(BaseModel):
 class ConsumeInventoryItemResponse(BaseModel):
     message: str
     data: ConsumeInventoryItemResponseData
+
+class ShoppingListProductDetails(BaseModel):
+    item_id: UUID
+    product_id: str
+    name: str
+    quantity: int
+    notes: Optional[str] = None
+    brand: Optional[str] = None
+    category: Optional[str] = None
+    image_url: Optional[str] = None
+
+class GetShoppingListResponse(BaseModel):
+    code: str = "SHOPPING_LIST_RETRIEVED"
+    message: str
+    items: list[ShoppingListProductDetails]

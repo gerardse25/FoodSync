@@ -8,7 +8,7 @@ import app.auth
 import app.shopping_list_schemas as schemas
 from app.database import get_db
 from app.home_models import Home, HomeMembership
-from app.inventory_models import CatalogProduct, InventoryProduct, InventoryProductOwner
+from app.inventory_models import Category, CatalogProduct, InventoryProduct, InventoryProductOwner
 from app.shopping_list_models import ShoppingListItem
 
 router = APIRouter(prefix="/shopping-list", tags=["shopping-list"])
@@ -25,6 +25,66 @@ def _verify_membership(home_id: UUID, user_id: UUID, db: Session):
         .first()
     )
     return membership
+
+
+@router.get("/{home_id}", response_model=schemas.GetShoppingListResponse)
+def get_shopping_list(
+    home_id: UUID,
+    current=Depends(app.auth.get_current_user),
+    db: Session = Depends(get_db),
+):
+    user, _ = current
+
+    # Verify home and membership
+    home = (
+        db.query(Home).filter(Home.id == home_id, Home.is_active.is_(True)).first()
+    )
+    if not home:
+        return JSONResponse(
+            status_code=404,
+            content={
+                "code": "HOME_NOT_FOUND",
+                "detail": "La llar no existeix o ha estat dissolta.",
+            },
+        )
+
+    membership = _verify_membership(home_id, user.id, db)
+    if not membership:
+        return JSONResponse(
+            status_code=403,
+            content={
+                "code": "NOT_IN_HOME",
+                "detail": "Accés denegat: L'usuari no pertany a aquesta llar activa.",
+            },
+        )
+
+    # Query all shopping list items joined with CatalogProduct and Category
+    rows = (
+        db.query(ShoppingListItem, CatalogProduct, Category)
+        .join(CatalogProduct, ShoppingListItem.product_id == CatalogProduct.id_producte_cataleg)
+        .outerjoin(Category, CatalogProduct.id_categoria == Category.id_categoria)
+        .filter(ShoppingListItem.home_id == home_id)
+        .all()
+    )
+
+    items_data = []
+    for item, product, category in rows:
+        items_data.append({
+            "item_id": item.id,
+            "product_id": str(product.id_producte_cataleg),
+            "name": product.nom,
+            "quantity": item.quantity,
+            "notes": item.notes,
+            "brand": product.marca,
+            "category": category.nom if category else None,
+            "image_url": product.imatge_url,
+        })
+
+    return {
+        "code": "SHOPPING_LIST_RETRIEVED",
+        "message": "Llista de la compra obtinguda correctament.",
+        "items": items_data,
+    }
 
 
 @router.post("/{home_id}", response_model=schemas.AddShoppingListItemResponse)
