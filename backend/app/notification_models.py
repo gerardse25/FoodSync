@@ -43,6 +43,12 @@ class Notification(Base):
             "tipus",
             name="uq_notification_user_product_type",
         ),
+        UniqueConstraint(
+            "user_id",
+            "tipus",
+            "event_key",
+            name="uq_notification_user_type_event",
+        ),
     )
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
@@ -55,10 +61,11 @@ class Notification(Base):
     id_inventari = Column(
         Integer,
         ForeignKey("productes_inventari.id_inventari", ondelete="CASCADE"),
-        nullable=False,
+        nullable=True,
         index=True,
     )
     tipus = Column(String(32), nullable=False)
+    event_key = Column(String(128), nullable=True, index=True)
     title = Column(String(120), nullable=False)
     message = Column(String(255), nullable=False)
     delivery_channel = Column(String(32), default="in_app", nullable=False)
