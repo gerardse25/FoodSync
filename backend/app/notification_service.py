@@ -14,6 +14,8 @@ from app.notification_models import Notification, NotificationPreference
 
 NOTIFICATION_TYPE_EXPIRED = "EXPIRED"
 NOTIFICATION_TYPE_EXPIRING_SOON = "EXPIRING_SOON"
+NOTIFICATION_TYPE_HOME_MEMBER_JOINED = "HOME_MEMBER_JOINED"
+NOTIFICATION_TYPE_HOME_PRODUCT_ADDED = "HOME_PRODUCT_ADDED"
 DEFAULT_EXPIRATION_NOTICE_DAYS = 3
 
 
@@ -82,6 +84,121 @@ def _active_recipients_for_home(db: Session, home_id) -> list[tuple[User, int]]:
     return recipients
 
 
+def _active_users_for_home(db: Session, home_id) -> list[User]:
+    rows = (
+        db.query(User)
+        .join(
+            HomeMembership,
+            and_(
+                HomeMembership.user_id == User.id,
+                HomeMembership.home_id == home_id,
+                HomeMembership.is_active.is_(True),
+            ),
+        )
+        .filter(User.is_active.is_(True))
+        .all()
+    )
+
+    return rows
+
+
+def _add_notification_if_missing(
+    db: Session,
+    *,
+    user_id,
+    notification_type: str,
+    title: str,
+    message: str,
+    event_key: str,
+    inventory_product_id: int | None = None,
+) -> bool:
+    exists = (
+        db.query(Notification)
+        .filter(
+            Notification.user_id == user_id,
+            Notification.tipus == notification_type,
+            Notification.event_key == event_key,
+        )
+        .first()
+    )
+
+    if exists:
+        return False
+
+    db.add(
+        Notification(
+            user_id=user_id,
+            id_inventari=inventory_product_id,
+            tipus=notification_type,
+            event_key=event_key,
+            title=title,
+            message=message,
+            delivery_channel="in_app",
+            delivery_status="pending",
+        )
+    )
+    return True
+
+
+def notify_home_member_joined(
+    db: Session,
+    *,
+    home_id,
+    joined_user: User,
+    joined_at,
+) -> int:
+    event_key = (
+        f"home_member_joined:{home_id}:" f"{joined_user.id}:{joined_at.isoformat()}"
+    )
+    title = "Nou membre a la llar"
+    message = f"{joined_user.username} s'ha unit a la llar."
+
+    created_count = 0
+    for recipient in _active_users_for_home(db, home_id):
+        if _add_notification_if_missing(
+            db,
+            user_id=recipient.id,
+            notification_type=NOTIFICATION_TYPE_HOME_MEMBER_JOINED,
+            title=title,
+            message=message,
+            event_key=event_key,
+        ):
+            created_count += 1
+
+    return created_count
+
+
+def notify_home_product_added(
+    db: Session,
+    *,
+    home_id,
+    inventory_product: InventoryProduct,
+    product_name: str,
+    added_by: User,
+) -> int:
+    if inventory_product.es_privat:
+        return 0
+
+    event_key = f"home_product_added:{inventory_product.id_inventari}"
+    title = "Nou producte a l'inventari"
+    message = f"{added_by.username} ha afegit {product_name} a l'inventari."
+
+    created_count = 0
+    for recipient in _active_users_for_home(db, home_id):
+        if _add_notification_if_missing(
+            db,
+            user_id=recipient.id,
+            notification_type=NOTIFICATION_TYPE_HOME_PRODUCT_ADDED,
+            title=title,
+            message=message,
+            event_key=event_key,
+            inventory_product_id=inventory_product.id_inventari,
+        ):
+            created_count += 1
+
+    return created_count
+
+
 def _owner_ids_by_product(db: Session, product_ids: Iterable[int]) -> dict[int, set]:
     product_ids = list(product_ids)
     if not product_ids:
@@ -128,6 +245,10 @@ def _build_notification(candidate: NotificationCandidate) -> Notification:
         user_id=candidate.user_id,
         id_inventari=product.id_inventari,
         tipus=candidate.notification_type,
+        event_key=(
+            f"expiration:{candidate.product.id_inventari}:"
+            f"{candidate.notification_type}"
+        ),
         title=title,
         message=message,
         delivery_channel="in_app",
