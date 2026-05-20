@@ -15,7 +15,9 @@ def list_notifications_request(client, headers):
     return client.get(LIST_NOTIFICATIONS_ENDPOINT, headers=headers)
 
 
-def update_preferences_request(client, headers, notifications_enabled, expiration_notice_days):
+def update_preferences_request(
+    client, headers, notifications_enabled, expiration_notice_days
+):
     return client.patch(
         PREFERENCES_ENDPOINT,
         headers=headers,
@@ -76,17 +78,29 @@ def test_scan_notifications_creates_notifications_for_all_members_on_public_prod
     assert scan_response.status_code == 200, scan_response.text
     assert scan_response.json()["code"] == "NOTIFICATIONS_SCAN_COMPLETED"
 
-    owner_notifications = list_notifications_request(client, shared_home_setup["owner_headers"])
-    member1_notifications = list_notifications_request(client, shared_home_setup["member1_headers"])
-    member2_notifications = list_notifications_request(client, shared_home_setup["member2_headers"])
+    owner_notifications = list_notifications_request(
+        client, shared_home_setup["owner_headers"]
+    )
+    member1_notifications = list_notifications_request(
+        client, shared_home_setup["member1_headers"]
+    )
+    member2_notifications = list_notifications_request(
+        client, shared_home_setup["member2_headers"]
+    )
 
     assert owner_notifications.status_code == 200, owner_notifications.text
     assert member1_notifications.status_code == 200, member1_notifications.text
     assert member2_notifications.status_code == 200, member2_notifications.text
 
-    owner_names = {n["nom_producte"] for n in owner_notifications.json()["notifications"]}
-    member1_names = {n["nom_producte"] for n in member1_notifications.json()["notifications"]}
-    member2_names = {n["nom_producte"] for n in member2_notifications.json()["notifications"]}
+    owner_names = {
+        n["nom_producte"] for n in owner_notifications.json()["notifications"]
+    }
+    member1_names = {
+        n["nom_producte"] for n in member1_notifications.json()["notifications"]
+    }
+    member2_names = {
+        n["nom_producte"] for n in member2_notifications.json()["notifications"]
+    }
 
     assert "public_expiring_product" in owner_names
     assert "public_expiring_product" in member1_names
@@ -117,14 +131,22 @@ def test_scan_notifications_creates_private_product_notification_only_for_owner(
     assert scan_response.status_code == 200, scan_response.text
     assert scan_response.json()["code"] == "NOTIFICATIONS_SCAN_COMPLETED"
 
-    owner_notifications = list_notifications_request(client, shared_home_setup["owner_headers"])
-    member1_notifications = list_notifications_request(client, shared_home_setup["member1_headers"])
+    owner_notifications = list_notifications_request(
+        client, shared_home_setup["owner_headers"]
+    )
+    member1_notifications = list_notifications_request(
+        client, shared_home_setup["member1_headers"]
+    )
 
     assert owner_notifications.status_code == 200, owner_notifications.text
     assert member1_notifications.status_code == 200, member1_notifications.text
 
-    owner_names = {n["nom_producte"] for n in owner_notifications.json()["notifications"]}
-    member1_names = {n["nom_producte"] for n in member1_notifications.json()["notifications"]}
+    owner_names = {
+        n["nom_producte"] for n in owner_notifications.json()["notifications"]
+    }
+    member1_names = {
+        n["nom_producte"] for n in member1_notifications.json()["notifications"]
+    }
 
     assert "private_expiring_product" in owner_names
     assert "private_expiring_product" not in member1_names
@@ -225,8 +247,12 @@ def test_scan_notifications_respects_disabled_preferences(
     owner_notifications = list_notifications_request(client, owner_headers)
     member1_notifications = list_notifications_request(client, member1_headers)
 
-    owner_names = {n["nom_producte"] for n in owner_notifications.json()["notifications"]}
-    member1_names = {n["nom_producte"] for n in member1_notifications.json()["notifications"]}
+    owner_names = {
+        n["nom_producte"] for n in owner_notifications.json()["notifications"]
+    }
+    member1_names = {
+        n["nom_producte"] for n in member1_notifications.json()["notifications"]
+    }
 
     assert "disabled_pref_product" in owner_names
     assert "disabled_pref_product" not in member1_names

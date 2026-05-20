@@ -11,7 +11,9 @@ def view_preferences_request(client, headers):
     return client.get(NOTIF_PREFERENCES_ENDPOINT, headers=headers)
 
 
-def update_preferences_request(client, headers, notifications_enabled, expiration_notice_days):
+def update_preferences_request(
+    client, headers, notifications_enabled, expiration_notice_days
+):
     return client.patch(
         NOTIF_PREFERENCES_ENDPOINT,
         headers=headers,
@@ -127,7 +129,6 @@ def test_update_notification_preferences_with_invalid_notice_days(
     assert response.status_code == 422, response.text
     body = response.json()
     assert body["code"] == "NOTIFICATION_PREFERENCES_INVALID"
-
 
 
 def test_update_notification_preferences_with_empty_expiration_notice_days_fails(
@@ -271,6 +272,7 @@ def test_update_only_notice_days_keeps_notifications_enabled_value(
     assert body["code"] == GET_PREFERENCES_CODE
     assert body["preferences"]["notifications_enabled"] is True
     assert body["preferences"]["expiration_notice_days"] == 4
+
 
 def test_update_only_notifications_enabled_value_keeps_expiration_notice_days(
     client,

@@ -1,12 +1,12 @@
 from datetime import date, datetime
 from typing import List, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
 
 class NotificationPreferenceUpdate(BaseModel):
     notifications_enabled: bool
-    expiration_notice_days: int = Field(default=3, ge=0, le=30)
+    expiration_notice_days: int
 
 
 class NotificationPreferenceItem(BaseModel):

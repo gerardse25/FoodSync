@@ -65,6 +65,15 @@ def update_notification_preferences(
     current=Depends(app.auth.get_current_user),
     db: Session = Depends(get_db),
 ):
+    if data.expiration_notice_days < 0 or data.expiration_notice_days > 30:
+        return JSONResponse(
+            status_code=422,
+            content={
+                "code": "NOTIFICATION_PREFERENCES_INVALID",
+                "message": "Els dies d'avís han d'estar entre 0 i 30.",
+            },
+        )
+
     user, _session = current
     preferences = get_or_create_preferences(db, user.id)
     preferences.notifications_enabled = data.notifications_enabled
