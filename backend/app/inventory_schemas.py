@@ -29,7 +29,7 @@ class InventoryProductSchema(BaseModel):
     data_caducitat_estimada: bool = False
     es_privat: bool
     owner_user_ids: List[str] = []
-    # Si vols l'objecte complex amb nom:
+    paid_by_user_id: Optional[str] = None
     propietaris: List[ProductOwnerSchema] = []
 
     model_config = ConfigDict(from_attributes=True)
@@ -73,6 +73,7 @@ class InventoryProductDetailSchema(BaseModel):
     data_compra: Optional[date] = None
 
     preu: Optional[str] = None
+    paid_by_user_id: Optional[str] = None
 
     es_privat: bool
     propietaris: List[ProductOwnerSchema] = []
@@ -109,6 +110,7 @@ class CreateInventoryManualProductRequest(BaseModel):
     quantitat: Optional[int] = None
     data_compra: Optional[date] = None
     data_caducitat: Optional[date] = None
+    paid_by_user_id: Optional[UUID] = None
     id_propietaris_privats: List[UUID] = Field(
         default_factory=list,
         validation_alias=AliasChoices(
@@ -130,6 +132,7 @@ class CreateInventoryProductResponseItem(BaseModel):
     data_caducitat_estimada: bool = False
     codi_barres: Optional[str] = None
     metode_registre: str
+    paid_by_user_id: Optional[str] = None
     owner_user_ids: List[str] = Field(default_factory=list)
 
 
@@ -158,6 +161,7 @@ class BarcodeLookupProductSchema(BaseModel):
     data_compra: Optional[date] = None
     data_caducitat: Optional[date] = None
     data_caducitat_estimada: bool = False
+    
 
 
 class BarcodeLookupResponseSchema(BaseModel):
@@ -191,6 +195,7 @@ class ConfirmBarcodeProductRequest(BaseModel):
             "owner_user_ids",
         ),
     )
+    paid_by_user_id: Optional[UUID] = None
 
 
 # =========================

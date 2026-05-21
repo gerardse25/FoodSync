@@ -239,9 +239,16 @@ def _build_create_response(inv_prod, cat_prod, cat_row, missatge: str):
             data_caducitat_estimada=inv_prod.data_caducitat_estimada,
             codi_barres=cat_prod.codi_barres,
             metode_registre=inv_prod.metode_registre,
+            paid_by_user_id=(
+                str(inv_prod.paid_by_user_id)
+                if inv_prod.paid_by_user_id is not None
+                else None
+            ),
             owner_user_ids=owners_list,
+
         ),
     )
+
 
 
 def _resolve_expiration_or_error(
@@ -415,6 +422,11 @@ def get_inventory(
                 data_caducitat=inv_prod.data_caducitat,
                 data_caducitat_estimada=inv_prod.data_caducitat_estimada,
                 es_privat=len(owners_data) > 0,
+                paid_by_user_id=(
+                    str(inv_prod.paid_by_user_id)
+                    if inv_prod.paid_by_user_id is not None
+                    else None
+                ),
                 propietaris=owners_data,
             )
         )
@@ -588,6 +600,11 @@ def get_inventory_product_detail(
         data_compra=inv_prod.data_compra,
         preu=str(inv_prod.preu) if inv_prod.preu is not None else None,
         es_privat=es_privat,
+        paid_by_user_id=(
+            str(inv_prod.paid_by_user_id)
+            if inv_prod.paid_by_user_id is not None
+            else None
+        ),
         propietaris=owners_data,
         estat_stock=estat_stock,
         nutriscore=cat_prod.nutriscore_grade,
@@ -659,6 +676,15 @@ def create_inventory_product_manual(
     if expiration_error:
         return expiration_error
 
+    paid_by_user_id, payer_error = _resolve_paid_by_user_id(
+        paid_by_user_id=data.paid_by_user_id,
+        current_user_id=user.id,
+        home_id=home.id,
+        db=db,
+    )
+    if payer_error:
+        return payer_error
+    
     catalog_product = CatalogProduct(
         codi_barres=None,
         nom=name,
@@ -677,6 +703,7 @@ def create_inventory_product_manual(
         data_caducitat_estimada=expiration.data_caducitat_estimada,
         preu=data.preu,
         data_compra=expiration.data_compra,
+        paid_by_user_id=paid_by_user_id,
         metode_registre="manual",
         es_privat=is_private,
     )
@@ -868,6 +895,15 @@ def confirm_and_add_barcode_product(
 
     is_private = len(owner_ids) > 0
 
+    paid_by_user_id, payer_error = _resolve_paid_by_user_id(
+        paid_by_user_id=data.paid_by_user_id,
+        current_user_id=user.id,
+        home_id=home.id,
+        db=db,
+    )
+    if payer_error:
+        return payer_error
+
     catalog_product = (
         db.query(CatalogProduct).filter(CatalogProduct.codi_barres == barcode).first()
     )
@@ -973,6 +1009,7 @@ def confirm_and_add_barcode_product(
         data_caducitat_estimada=expiration.data_caducitat_estimada,
         preu=data.preu,
         data_compra=expiration.data_compra,
+        paid_by_user_id=paid_by_user_id,
         metode_registre="barcode",
         es_privat=is_private,
     )
@@ -1165,3 +1202,36 @@ def _validate_owner_list(home_id, owner_user_ids, db: Session):
             )
 
     return normalized, None
+
+def _resolve_paid_by_user_id(
+    paid_by_user_id,
+    current_user_id,
+    home_id,
+    db: Session,
+):
+    """
+    Resol qui ha pagat el producte.
+
+    - Si el frontend envia paid_by_user_id, comprovem que sigui membre actiu.
+    - Si no l'envia, s'assumeix l'usuari autenticat.
+    """
+    resolved_user_id = paid_by_user_id or current_user_id
+
+    membership = (
+        db.query(HomeMembership)
+        .filter(
+            HomeMembership.home_id == home_id,
+            HomeMembership.user_id == resolved_user_id,
+            HomeMembership.is_active.is_(True),
+        )
+        .first()
+    )
+
+    if not membership:
+        return None, _json_error(
+            "L'usuari pagador no pertany a la llar.",
+            422,
+            "PAYER_NOT_IN_HOME",
+        )
+
+    return resolved_user_id, None

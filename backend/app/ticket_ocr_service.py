@@ -344,7 +344,9 @@ def _search_off_by_name(name: str) -> list[dict]:
         "page_size": _OFF_SEARCH_PAGE_SIZE,
         "fields": (
             "product_name,brands,nutrition_grades,categories_tags,"
-            "quantity,image_front_url,image_url"
+            "categories_hierarchy,compared_to_category,ciqual_food_name_tags,"
+            "food_groups_tags,pnns_groups_1_tags,pnns_groups_2_tags,"
+            "generic_name,_keywords,quantity,image_front_url,image_url"
         ),
     }
     try:
@@ -406,8 +408,7 @@ def enrich_product_off(raw: RawTicketProduct) -> dict:
         best.get("image_front_url") or best.get("image_url") or None
     )
 
-    cat_tags = best.get("categories_tags") or []
-    category_enum = map_off_to_internal_category(cat_tags)
+    category_enum = map_off_to_internal_category(best)
     enriched["categoria"] = category_enum
     enriched["categoria_label"] = CATEGORY_LABELS_CA.get(category_enum)
     enriched["quantitat_envas"] = (best.get("quantity") or "").strip() or None

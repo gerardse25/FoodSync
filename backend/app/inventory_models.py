@@ -79,6 +79,14 @@ class InventoryProduct(Base):
     # Camps propis de la compra / llar
     preu = Column(Numeric(10, 2), nullable=True)
     data_compra = Column(Date, nullable=True)
+
+    # Usuari que ha pagat aquest producte.
+    # Si el frontend no l'envia, es guarda l'usuari autenticat.
+    paid_by_user_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id"),
+        nullable=True,
+    )
     metode_registre = Column(
         String(16), nullable=False, default="manual"
     )  # manual|barcode|receipt
@@ -91,6 +99,7 @@ class InventoryProduct(Base):
         back_populates="producte_inventari",
         cascade="all, delete-orphan",
     )
+    paid_by_user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
 
 
 class InventoryProductOwner(Base):
@@ -117,3 +126,45 @@ class InventoryProductOwner(Base):
 
     producte_inventari = relationship("InventoryProduct", back_populates="owners")
     user = relationship("app.models.User")
+
+
+class CostSettlement(Base):
+    __tablename__ = "cost_settlements"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+
+    home_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("homes.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+
+    from_user_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+
+    to_user_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+
+    amount = Column(Numeric(10, 2), nullable=False)
+
+    # Rang opcional al qual aplica el pagament.
+    # Si són null, el pagament aplica al balanç general.
+    date_from = Column(Date, nullable=True)
+    date_to = Column(Date, nullable=True)
+
+    paid_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+    created_by_user_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True,
+    )

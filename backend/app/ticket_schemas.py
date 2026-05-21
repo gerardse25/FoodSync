@@ -106,7 +106,7 @@ class ConfirmTicketProductItem(BaseModel):
 
 class ConfirmTicketRequest(BaseModel):
     """Cos de POST /inventory/ticket/confirm."""
-
+    paid_by_user_id: Optional[UUID] = None
     productes: List[ConfirmTicketProductItem]
 
 
@@ -122,6 +122,7 @@ class ConfirmedProductItem(BaseModel):
     data_compra: Optional[date] = None
     data_caducitat: Optional[date] = None
     data_caducitat_estimada: bool = False
+    paid_by_user_id: Optional[str] = None
     metode_registre: str
     owner_user_ids: List[str] = Field(default_factory=list)
 

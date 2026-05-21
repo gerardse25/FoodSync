@@ -41,6 +41,7 @@ from app.inventory_routes import (
     _normalize_product_name,
     _validate_owner_list,
     _validate_price_quantity,
+    _resolve_paid_by_user_id,
 )
 from app.ticket_ocr_service import (
     ImageValidationError,
@@ -241,6 +242,16 @@ def confirm_ticket(
             "NO_PRODUCTS_PROVIDED",
         )
 
+    # Resolem pagador tiquet
+    paid_by_user_id, payer_error = _resolve_paid_by_user_id(
+        paid_by_user_id=data.paid_by_user_id,
+        current_user_id=user.id,
+        home_id=home.id,
+        db=db,
+    )
+    if payer_error:
+        return payer_error
+
     # 2. Validar tots els productes abans de persistir cap
     validated_products = []
     for idx, prod_item in enumerate(data.productes):
@@ -338,6 +349,7 @@ def confirm_ticket(
             data_caducitat_estimada=expiration.data_caducitat_estimada,
             preu=prod_item.preu,
             data_compra=expiration.data_compra,
+            paid_by_user_id=paid_by_user_id,
             metode_registre="receipt",
             es_privat=is_private,
         )
@@ -364,6 +376,11 @@ def confirm_ticket(
                 data_compra=inv_product.data_compra,
                 data_caducitat=inv_product.data_caducitat,
                 data_caducitat_estimada=inv_product.data_caducitat_estimada,
+                paid_by_user_id=(
+                    str(inv_product.paid_by_user_id)
+                    if inv_product.paid_by_user_id is not None
+                    else None
+                ),
                 metode_registre=inv_product.metode_registre,
                 owner_user_ids=[str(oid) for oid in owner_ids_normalized],
             )

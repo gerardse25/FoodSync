@@ -13,6 +13,8 @@ from app.inventory_routes import router as inventory_router
 from app.notification_routes import router as notification_router
 from app.routes import router
 from app.ticket_routes import router as ticket_router
+from app.cost_routes import router as cost_router
+
 
 app = FastAPI()
 
@@ -24,7 +26,9 @@ app.include_router(inventory_router)
 app.include_router(inventory_modify_router)
 app.include_router(inventory_delete_router)
 app.include_router(ticket_router)
+app.include_router(cost_router)
 app.include_router(notification_router)
+
 
 # IMPORTANT:
 # product_router queda fora del main en aquesta branca per evitar
