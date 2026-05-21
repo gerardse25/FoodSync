@@ -245,10 +245,8 @@ def _build_create_response(inv_prod, cat_prod, cat_row, missatge: str):
                 else None
             ),
             owner_user_ids=owners_list,
-
         ),
     )
-
 
 
 def _resolve_expiration_or_error(
@@ -684,7 +682,7 @@ def create_inventory_product_manual(
     )
     if payer_error:
         return payer_error
-    
+
     catalog_product = CatalogProduct(
         codi_barres=None,
         nom=name,
@@ -1202,6 +1200,7 @@ def _validate_owner_list(home_id, owner_user_ids, db: Session):
             )
 
     return normalized, None
+
 
 def _resolve_paid_by_user_id(
     paid_by_user_id,

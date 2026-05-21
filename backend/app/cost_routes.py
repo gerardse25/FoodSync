@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from collections import defaultdict
 from datetime import date, timedelta
-from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
+from decimal import ROUND_HALF_UP, Decimal, InvalidOperation
 from typing import Literal, Optional
 
 from fastapi import APIRouter, Depends, Query
@@ -22,6 +22,7 @@ from app.inventory_routes import (
 router = APIRouter(prefix="/inventory/costs", tags=["inventory", "costs"])
 
 Period = Literal["weekly", "monthly", "yearly"]
+
 
 def _money(value: Decimal) -> Decimal:
     return value.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
@@ -85,7 +86,9 @@ def _get_active_home_or_error(user_id, db: Session):
 
     home = _get_active_home(membership.home_id, db)
     if not home:
-        return None, _json_error("La llar no existeix o no és activa.", 404, "HOME_NOT_FOUND")
+        return None, _json_error(
+            "La llar no existeix o no és activa.", 404, "HOME_NOT_FOUND"
+        )
 
     return home, None
 
@@ -112,9 +115,7 @@ def _get_products_for_costs(
 
 def _get_active_member_ids(home_id, db: Session) -> list:
     memberships = (
-        db.query(HomeMembership)
-        .filter(HomeMembership.home_id == home_id)
-        .all()
+        db.query(HomeMembership).filter(HomeMembership.home_id == home_id).all()
     )
 
     member_ids = []
@@ -144,11 +145,12 @@ def _get_owner_map(product_ids: list[int], db: Session) -> dict[int, list]:
 
     return result
 
+
 def _parse_money(value: str) -> Decimal:
     try:
         amount = Decimal(str(value).strip())
     except (InvalidOperation, ValueError, AttributeError):
-        raise ValueError("INVALID_AMOUNT")
+        raise ValueError("INVALID_AMOUNT") from None
 
     if amount <= 0:
         raise ValueError("INVALID_AMOUNT")
@@ -165,10 +167,7 @@ def _get_settlements_for_period(
     date_from: Optional[date],
     date_to: date,
 ):
-    query = (
-        db.query(CostSettlement)
-        .filter(CostSettlement.home_id == home_id)
-    )
+    query = db.query(CostSettlement).filter(CostSettlement.home_id == home_id)
 
     if date_from is None:
         query = query.filter(CostSettlement.date_from.is_(None))
@@ -211,14 +210,10 @@ def _build_minimized_transfers(
     balances: dict,
 ) -> list[schemas.CostTransfer]:
     debtors = [
-        [member_id, -balance]
-        for member_id, balance in balances.items()
-        if balance < 0
+        [member_id, -balance] for member_id, balance in balances.items() if balance < 0
     ]
     creditors = [
-        [member_id, balance]
-        for member_id, balance in balances.items()
-        if balance > 0
+        [member_id, balance] for member_id, balance in balances.items() if balance > 0
     ]
 
     transfers: list[schemas.CostTransfer] = []
@@ -327,10 +322,7 @@ def _calculate_cost_split(
         settlements,
     )
 
-    balances = {
-        member_id: _money(balance)
-        for member_id, balance in balances.items()
-    }
+    balances = {member_id: _money(balance) for member_id, balance in balances.items()}
 
     transfers = _build_minimized_transfers(balances)
 
@@ -524,6 +516,7 @@ def get_cost_split(
         date_to=date_to,
     )
 
+
 @router.post("/settlements", response_model=schemas.CreateCostSettlementResponse)
 def create_cost_settlement(
     data: schemas.CreateCostSettlementRequest,
@@ -597,10 +590,9 @@ def create_cost_settlement(
 
     matching_transfer = None
     for transfer in current_split.transfers:
-        if (
-            transfer.from_user_id == str(data.from_user_id)
-            and transfer.to_user_id == str(data.to_user_id)
-        ):
+        if transfer.from_user_id == str(
+            data.from_user_id
+        ) and transfer.to_user_id == str(data.to_user_id):
             matching_transfer = transfer
             break
 

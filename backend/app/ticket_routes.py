@@ -39,9 +39,9 @@ from app.inventory_routes import (
     _get_or_create_category_row,
     _json_error,
     _normalize_product_name,
+    _resolve_paid_by_user_id,
     _validate_owner_list,
     _validate_price_quantity,
-    _resolve_paid_by_user_id,
 )
 from app.ticket_ocr_service import (
     ImageValidationError,

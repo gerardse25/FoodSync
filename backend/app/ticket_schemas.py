@@ -106,6 +106,7 @@ class ConfirmTicketProductItem(BaseModel):
 
 class ConfirmTicketRequest(BaseModel):
     """Cos de POST /inventory/ticket/confirm."""
+
     paid_by_user_id: Optional[UUID] = None
     productes: List[ConfirmTicketProductItem]
 

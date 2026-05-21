@@ -161,7 +161,6 @@ class BarcodeLookupProductSchema(BaseModel):
     data_compra: Optional[date] = None
     data_caducitat: Optional[date] = None
     data_caducitat_estimada: bool = False
-    
 
 
 class BarcodeLookupResponseSchema(BaseModel):
