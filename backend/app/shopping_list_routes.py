@@ -27,7 +27,7 @@ def _verify_membership(home_id: UUID, user_id: UUID, db: Session):
     return membership
 
 
-@router.get("/{home_id}", response_model=schemas.GetShoppingListResponse)
+@router.get("/{home_id}", response_model=None)
 def get_shopping_list(
     home_id: UUID,
     current=Depends(app.auth.get_current_user),
@@ -69,22 +69,27 @@ def get_shopping_list(
 
     items_data = []
     for item, product, category in rows:
-        items_data.append({
-            "item_id": item.id,
-            "product_id": str(product.id_producte_cataleg),
-            "name": product.nom,
-            "quantity": item.quantity,
-            "notes": item.notes,
-            "brand": product.marca,
-            "category": category.nom if category else None,
-            "image_url": product.imatge_url,
-        })
+        items_data.append(
+            schemas.ShoppingListProductDetails(
+                item_id=item.id,
+                product_id=str(product.id_producte_cataleg),
+                name=product.nom,
+                quantity=item.quantity,
+                notes=item.notes,
+                brand=product.marca,
+                category=category.nom if category else None,
+                image_url=product.imatge_url,
+            ).model_dump(mode="json")
+        )
 
-    return {
-        "code": "SHOPPING_LIST_RETRIEVED",
-        "message": "Llista de la compra obtinguda correctament.",
-        "items": items_data,
-    }
+    return JSONResponse(
+        status_code=200,
+        content={
+            "code": "SHOPPING_LIST_RETRIEVED",
+            "message": "Llista de la compra obtinguda correctament.",
+            "items": items_data,
+        },
+    )
 
 
 @router.post("/{home_id}", response_model=schemas.AddShoppingListItemResponse)
