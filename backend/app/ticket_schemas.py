@@ -95,6 +95,10 @@ class ConfirmTicketProductItem(BaseModel):
     quantitat: Optional[int] = None
     preu: Optional[Decimal] = None
 
+    marca: Optional[str] = None
+    imatge_url: Optional[str] = None
+    nutriscore: Optional[str] = None
+
     data_caducitat: Optional[date] = None
     data_compra: Optional[date] = None
     id_propietaris_privats: List[UUID] = Field(default_factory=list)

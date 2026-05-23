@@ -254,9 +254,10 @@ def confirm_ticket(
             catalog_product = CatalogProduct(
                 codi_barres=None,
                 nom=name,
-                marca=None,
+                marca=prod_item.marca,
                 id_categoria=category_row.id_categoria,
-                imatge_url=None,
+                imatge_url=prod_item.imatge_url,
+                nutriscore_grade=prod_item.nutriscore,
             )
             db.add(catalog_product)
             db.flush()
@@ -264,6 +265,14 @@ def confirm_ticket(
             # Actualitzar categoria si estava absent
             if catalog_product.id_categoria is None:
                 catalog_product.id_categoria = category_row.id_categoria
+            
+            # Actualitzar camps de metadades si estaven buits
+            if not catalog_product.marca and prod_item.marca:
+                catalog_product.marca = prod_item.marca
+            if not catalog_product.imatge_url and prod_item.imatge_url:
+                catalog_product.imatge_url = prod_item.imatge_url
+            if not catalog_product.nutriscore_grade and prod_item.nutriscore:
+                catalog_product.nutriscore_grade = prod_item.nutriscore
 
         # Determinar si és privat
         is_private = len(owner_ids_normalized) > 0

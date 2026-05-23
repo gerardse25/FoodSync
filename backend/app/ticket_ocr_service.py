@@ -31,7 +31,12 @@ from typing import Optional
 
 import requests
 
-from app.barcode_service import HEADERS as OFF_HEADERS
+from app.barcode_service import (
+    HEADERS as OFF_HEADERS,
+    _extract_allergens,
+    _extract_ingredients,
+    _extract_nutriments_per_100g,
+)
 from app.category_mapper import map_off_to_internal_category
 from app.product_schemas import CATEGORY_LABELS_CA
 
@@ -359,7 +364,9 @@ def _search_off_by_name(name: str) -> list[dict]:
         "page_size": _OFF_SEARCH_PAGE_SIZE,
         "fields": (
             "product_name,brands,nutrition_grades,categories_tags,"
-            "quantity,image_front_url,image_url"
+            "quantity,image_front_url,image_url,"
+            "ingredients_text_es,ingredients_text,ingredients_text_en,ingredients_text_ca,"
+            "allergens_tags,allergens_hierarchy,allergens,nutriments"
         ),
     }
     try:
@@ -426,6 +433,10 @@ def enrich_product_off(raw: RawTicketProduct) -> dict:
     enriched["categoria"] = category_enum
     enriched["categoria_label"] = CATEGORY_LABELS_CA.get(category_enum)
     enriched["quantitat_envas"] = (best.get("quantity") or "").strip() or None
+    
+    enriched["ingredients_text"] = _extract_ingredients(best)
+    enriched["allergens_text"] = _extract_allergens(best)
+    enriched["nutriments_per_100g"] = _extract_nutriments_per_100g(best)
 
     return enriched
 
