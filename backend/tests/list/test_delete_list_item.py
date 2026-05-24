@@ -123,7 +123,7 @@ def test_owner_can_delete_existing_item(client, shared_home_setup):
         notes="semi-skimmed",
     )
 
-    response = delete_item(client, item_id, headers)
+    response = delete_item(client, home_id, item_id, headers)
 
     body = assert_success_response(response, 200, "LIST_ITEM_DELETED")
     assert body["message"] == "Producte eliminat de la llista de la compra."
@@ -147,7 +147,7 @@ def test_member_can_delete_existing_item(client, shared_home_setup):
         notes="free-range",
     )
 
-    response = delete_item(client, item_id, member_headers)
+    response = delete_item(client, home_id, item_id, member_headers)
 
     body = assert_success_response(response, 200, "LIST_ITEM_DELETED")
     assert body["data"]["id"] == item_id
@@ -178,7 +178,7 @@ def test_deleting_one_item_keeps_other_items_unchanged(client, shared_home_setup
         notes="whole grain",
     )
 
-    response = delete_item(client, item_id_to_delete, headers)
+    response = delete_item(client, home_id, item_id_to_delete, headers)
 
     body = assert_success_response(response, 200, "LIST_ITEM_DELETED")
     assert body["data"]["id"] == item_id_to_delete
@@ -203,7 +203,7 @@ def test_deleting_last_item_leaves_shopping_list_empty(client, shared_home_setup
         quantity=3,
     )
 
-    delete_response = delete_item(client, item_id, headers)
+    delete_response = delete_item(client, home_id, item_id, headers)
     assert_success_response(delete_response, 200, "LIST_ITEM_DELETED")
 
     items = list_shopping_items_db(client, home_id)
@@ -222,10 +222,10 @@ def test_deleted_item_cannot_be_deleted_twice(client, shared_home_setup):
         quantity=4,
     )
 
-    first_response = delete_item(client, item_id, headers)
+    first_response = delete_item(client, home_id, item_id, headers)
     assert_success_response(first_response, 200, "LIST_ITEM_DELETED")
 
-    second_response = delete_item(client, item_id, headers)
+    second_response = delete_item(client, home_id, item_id, headers)
     assert_item_not_found(second_response)
 
 
@@ -241,7 +241,7 @@ def test_user_without_authentication_cannot_delete_item(client, shared_home_setu
         quantity=1,
     )
 
-    response = delete_item(client, item_id, {})
+    response = delete_item(client, home_id, item_id, {})
 
     assert_auth_required(response)
 
@@ -260,6 +260,7 @@ def test_user_with_invalid_token_cannot_delete_item(client, shared_home_setup):
 
     response = delete_item(
         client,
+        home_id,
         item_id,
         {"Authorization": "Bearer invalid-token"},
     )
@@ -279,7 +280,7 @@ def test_user_not_in_home_cannot_delete_item(client, shared_home_setup, outsider
         quantity=1,
     )
 
-    response = delete_item(client, item_id, outsider_user["headers"])
+    response = delete_item(client, home_id, item_id, outsider_user["headers"])
 
     assert_not_in_home(response)
 
@@ -300,7 +301,7 @@ def test_user_from_other_home_cannot_delete_foreign_item(
         quantity=1,
     )
 
-    response = delete_item(client, item_id, private_home_setup["headers"])
+    response = delete_item(client, home_id, item_id, private_home_setup["headers"])
 
     assert_not_in_home(response)
 
@@ -329,7 +330,7 @@ def test_cannot_delete_item_when_home_is_inactive(client, private_home_setup):
 
     deactivate_home(client, home_id)
 
-    response = delete_item(client, item_id, headers)
+    response = delete_item(client, home_id, item_id, headers)
 
     assert_home_not_found(response)
 
@@ -362,7 +363,7 @@ def test_delete_item_removes_correct_item_when_multiple_items_exist(client, shar
         quantity=1,
     )
 
-    response = delete_item(client, eggs_id, headers)
+    response = delete_item(client, home_id, eggs_id, headers)
 
     body = assert_success_response(response, 200, "LIST_ITEM_DELETED")
     assert body["data"]["id"] == eggs_id
@@ -401,7 +402,7 @@ def test_delete_item_does_not_affect_items_from_other_home(
         quantity=1,
     )
 
-    response = delete_item(client, shared_item_id, shared_headers)
+    response = delete_item(client, shared_home_id, shared_item_id, shared_headers)
     assert_success_response(response, 200, "LIST_ITEM_DELETED")
 
     shared_items = list_shopping_items_db(client, shared_home_id)
@@ -430,7 +431,7 @@ def test_delete_item_reflects_change_in_database(client, shared_home_setup):
     assert len(before_items) == 1
     assert before_items[0]["id"] == item_id
 
-    response = delete_item(client, item_id, headers)
+    response = delete_item(client, home_id, item_id, headers)
 
     body = assert_success_response(response, 200, "LIST_ITEM_DELETED")
     assert body["data"]["id"] == item_id
