@@ -3,7 +3,6 @@ from uuid import UUID
 
 import pytest
 
-
 COST_SPLIT_ENDPOINT = "/inventory/costs/split"
 
 
@@ -186,6 +185,7 @@ def test_cost_split_private_product_is_shared_only_between_private_owners(
         (member2["user"]["id"], member1["user"]["id"], "4.00"),
     }
 
+
 def test_cost_split_private_product_owned_by_single_user_is_only_charged_to_that_user(
     client,
     shared_home_setup,
@@ -242,6 +242,7 @@ def test_cost_split_private_product_owned_by_single_user_is_only_charged_to_that
     assert member2_row["balance"] == "0.00"
 
     assert transfers_as_tuples(body) == set()
+
 
 def test_cost_split_private_product_owned_by_all_members_is_shared_between_all_of_them(
     client,
@@ -307,6 +308,7 @@ def test_cost_split_private_product_owned_by_all_members_is_shared_between_all_o
         (member2["user"]["id"], owner["user"]["id"], "3.00"),
     }
 
+
 def test_cost_split_private_product_paid_by_one_user_but_owned_by_another_user(
     client,
     shared_home_setup,
@@ -365,6 +367,7 @@ def test_cost_split_private_product_paid_by_one_user_but_owned_by_another_user(
     assert transfers_as_tuples(body) == {
         (member2["user"]["id"], owner["user"]["id"], "8.00"),
     }
+
 
 def test_cost_split_private_product_paid_by_one_user_and_owned_by_other_members(
     client,
@@ -425,6 +428,7 @@ def test_cost_split_private_product_paid_by_one_user_and_owned_by_other_members(
         (member1["user"]["id"], owner["user"]["id"], "4.00"),
         (member2["user"]["id"], owner["user"]["id"], "4.00"),
     }
+
 
 def test_cost_split_multiple_products_with_different_payers_are_aggregated_correctly(
     client,
@@ -511,7 +515,7 @@ def test_cost_split_ignores_products_without_price_or_purchase_date(
     home_id = shared_home_setup["home_id"]
     headers = shared_home_setup["owner_headers"]
 
-    valid = seed_cost_product(
+    seed_cost_product(
         client,
         seed_product_db,
         home_id=home_id,
@@ -558,12 +562,16 @@ def test_cost_split_ignores_products_without_price_or_purchase_date(
         inventory_models = client.app_modules["inventory_models"]
         InventoryProduct = inventory_models.InventoryProduct
 
-        row1 = db.query(InventoryProduct).filter(
-            InventoryProduct.id_inventari == int(no_price["id"])
-        ).first()
-        row2 = db.query(InventoryProduct).filter(
-            InventoryProduct.id_inventari == int(no_purchase["id"])
-        ).first()
+        row1 = (
+            db.query(InventoryProduct)
+            .filter(InventoryProduct.id_inventari == int(no_price["id"]))
+            .first()
+        )
+        row2 = (
+            db.query(InventoryProduct)
+            .filter(InventoryProduct.id_inventari == int(no_purchase["id"]))
+            .first()
+        )
 
         row1.preu = None
         row2.data_compra = None
@@ -672,6 +680,7 @@ def test_unauthenticated_user_cannot_get_cost_split(client, headers):
     assert response.status_code in (401, 403), response.text
     body = response.json()
     assert body["code"] == "AUTH_REQUIRED"
+
 
 def test_cost_split_rounds_periodic_shares_correctly(
     client,

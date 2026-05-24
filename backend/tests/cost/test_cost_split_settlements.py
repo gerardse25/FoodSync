@@ -280,7 +280,7 @@ def test_settlement_then_recheck_split_returns_same_updated_state_split(
 ):
     owner = shared_home_setup["owner"]
     member1 = shared_home_setup["member1"]
-    member2 = shared_home_setup["member2"]
+    shared_home_setup["member2"]
     home_id = shared_home_setup["home_id"]
     headers = shared_home_setup["owner_headers"]
 
@@ -420,6 +420,7 @@ def test_split_flow_rounding_is_preserved_after_settlement(
         (member2["user"]["id"], owner["user"]["id"], "3.33"),
     }
 
+
 def test_split_settlement_flow_changes_after_adding_new_product(
     client,
     shared_home_setup,
@@ -509,7 +510,9 @@ def test_split_settlement_flow_changes_after_adding_new_product(
     assert updated_members[member1["user"]["id"]]["balance"] == "-2.00"
     assert updated_members[member2["user"]["id"]]["balance"] == "1.00"
 
+
 # balance = paid - should_pay - settled_received + settled_paid
+
 
 def test_split_settlement_flow_changes_after_increasing_product_price(
     client,
@@ -601,6 +604,7 @@ def test_split_settlement_flow_changes_after_increasing_product_price(
         (member2["user"]["id"], owner["user"]["id"], "4.00"),
     }
 
+
 def test_split_settlement_flow_changes_after_making_product_cheaper(
     client,
     shared_home_setup,
@@ -691,6 +695,7 @@ def test_split_settlement_flow_changes_after_making_product_cheaper(
         (member2["user"]["id"], owner["user"]["id"], "2.00"),
     }
 
+
 def test_split_settlement_flow_changes_after_deleting_product(
     client,
     shared_home_setup,
@@ -770,6 +775,7 @@ def test_split_settlement_flow_changes_after_deleting_product(
     assert transfers_as_tuples(updated_split) == {
         (owner["user"]["id"], member1["user"]["id"], "1.50"),
     }
+
 
 def test_cost_split_minimizes_number_of_transfers_when_each_user_paid_one_product(
     client,

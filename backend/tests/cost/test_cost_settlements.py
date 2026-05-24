@@ -3,7 +3,6 @@ from uuid import UUID
 
 import pytest
 
-
 COST_SETTLEMENTS_ENDPOINT = "/inventory/costs/settlements"
 
 
@@ -506,6 +505,7 @@ def test_unauthenticated_user_cannot_create_cost_settlement(client, headers):
     body = response.json()
     assert body["code"] == "AUTH_REQUIRED"
 
+
 @pytest.mark.parametrize(
     "date_from,date_to",
     [
@@ -540,6 +540,7 @@ def test_create_cost_settlement_rejects_invalid_date_formats(
     )
 
     assert response.status_code in (400, 422), response.text
+
 
 def test_create_cost_settlement_with_exact_pending_amount_clears_that_debt(
     client,
@@ -603,6 +604,7 @@ def test_create_cost_settlement_with_exact_pending_amount_clears_that_debt(
     assert transfers_as_tuples(split) == {
         (member2["user"]["id"], owner["user"]["id"], "3.00"),
     }
+
 
 def test_create_cost_settlements_with_exact_pending_amounts_clear_all_debts(
     client,

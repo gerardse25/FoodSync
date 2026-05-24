@@ -3,7 +3,6 @@ from uuid import UUID
 
 import pytest
 
-
 COST_SUMMARY_ENDPOINT = "/inventory/costs/summary"
 
 
@@ -347,6 +346,7 @@ def test_cost_summary_rejects_date_to_before_date_from(client, shared_home_setup
     body = response.json()
     assert body["code"] == "INVALID_DATE_RANGE"
 
+
 def test_cost_summary_rejects_to_in_the_future_date_to(client, shared_home_setup):
     headers = shared_home_setup["owner_headers"]
 
@@ -363,6 +363,7 @@ def test_cost_summary_rejects_to_in_the_future_date_to(client, shared_home_setup
     assert response.status_code in (400, 422), response.text
     body = response.json()
     assert body["code"] in ("INVALID_DATE_RANGE")
+
 
 def test_cost_summary_rejects_future_date_to(client, shared_home_setup):
     headers = shared_home_setup["owner_headers"]

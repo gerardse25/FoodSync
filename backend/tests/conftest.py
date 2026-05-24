@@ -130,7 +130,7 @@ def app_modules(tmp_path, monkeypatch):
         "notification_schemas": notification_schemas,
         "notification_service": notification_service,
         "cost_routes": cost_routes,
-        "cost_schemas": cost_schemas
+        "cost_schemas": cost_schemas,
     }
 
     main.app.dependency_overrides.clear()
