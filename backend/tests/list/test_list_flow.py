@@ -62,23 +62,23 @@ def get_list(client, home_id, headers):
     return client.get(f"{SHOPPING_LIST_ENDPOINT}/{home_id}", headers=headers)
 
 
-def update_item(client, item_id, headers, *, quantity=None, extra_payload=None):
+def update_item(client, home_id, item_id, headers, *, quantity=None, extra_payload=None):
     payload = {}
     if quantity is not None:
         payload["quantity"] = quantity
     if extra_payload:
         payload.update(extra_payload)
 
-    return client.put(
-        f"{SHOPPING_LIST_ENDPOINT}/item/{item_id}",
+    return client.patch(
+        f"{SHOPPING_LIST_ENDPOINT}/{home_id}/{item_id}",
         json=payload,
         headers=headers,
     )
 
 
-def delete_item(client, item_id, headers):
+def delete_item(client, home_id, item_id, headers):
     return client.delete(
-        f"{SHOPPING_LIST_ENDPOINT}/item/{item_id}",
+        f"{SHOPPING_LIST_ENDPOINT}/{home_id}/{item_id}",
         headers=headers,
     )
 
@@ -121,7 +121,7 @@ def test_owner_can_add_view_update_and_delete_item_in_full_flow(client, shared_h
     initial_get = get_list(client, home_id, headers)
     initial_body = assert_success_response(initial_get, 200, "LIST_RETRIEVED")
     assert initial_body["items"] == []
-
+    
     add_response = add_item(
         client,
         home_id,
@@ -143,6 +143,7 @@ def test_owner_can_add_view_update_and_delete_item_in_full_flow(client, shared_h
 
     update_response = update_item(
         client,
+        home_id,
         item_id,
         headers,
         quantity=4,
@@ -161,7 +162,7 @@ def test_owner_can_add_view_update_and_delete_item_in_full_flow(client, shared_h
     assert after_update_body["items"][0]["quantity"] == 4
     assert after_update_body["items"][0]["notes"] == "semi-skimmed"
 
-    delete_response = delete_item(client, item_id, headers)
+    delete_response = delete_item(client, home_id, item_id, headers)
     delete_body = assert_success_response(delete_response, 200, "LIST_ITEM_DELETED")
     assert delete_body["data"]["id"] == item_id
 
@@ -194,6 +195,7 @@ def test_member_can_see_and_modify_item_created_by_owner(client, shared_home_set
 
     update_response = update_item(
         client,
+        home_id,
         item_id,
         member_headers,
         quantity=2,
@@ -203,7 +205,7 @@ def test_member_can_see_and_modify_item_created_by_owner(client, shared_home_set
     assert update_body["data"]["quantity"] == 2
     assert update_body["data"]["notes"] == "whole grain"
 
-    delete_response = delete_item(client, item_id, member_headers)
+    delete_response = delete_item(client, home_id, item_id, member_headers)
     delete_body = assert_success_response(delete_response, 200, "LIST_ITEM_DELETED")
     assert delete_body["data"]["id"] == item_id
 
@@ -248,6 +250,7 @@ def test_add_merge_view_update_then_delete_flow(client, shared_home_setup):
 
     update_response = update_item(
         client,
+        home_id,
         item_id,
         headers,
         quantity=7,
@@ -265,7 +268,7 @@ def test_add_merge_view_update_then_delete_flow(client, shared_home_setup):
     assert after_update_body["items"][0]["quantity"] == 7
     assert after_update_body["items"][0]["notes"] == "basmati"
 
-    delete_response = delete_item(client, item_id, headers)
+    delete_response = delete_item(client, home_id, item_id, headers)
     assert_success_response(delete_response, 200, "LIST_ITEM_DELETED")
 
     final_get = get_list(client, home_id, headers)
@@ -299,6 +302,7 @@ def test_spaces_are_normalized_consistently_across_add_get_and_update(client, sh
 
     update_response = update_item(
         client,
+        home_id,
         item_id,
         headers,
         quantity=3,
@@ -346,6 +350,7 @@ def test_empty_or_blank_notes_are_handled_consistently_across_add_update_and_get
 
     update_response = update_item(
         client,
+        home_id,
         item_id,
         headers,
         quantity=5,
@@ -373,18 +378,19 @@ def test_item_cannot_be_updated_or_deleted_after_being_deleted(client, shared_ho
     add_body = assert_success_response(add_response, 201, "PRODUCT_ADDED_TO_LIST")
     item_id = add_body["data"]["id"]
 
-    delete_response = delete_item(client, item_id, headers)
+    delete_response = delete_item(client, home_id, item_id, headers)
     assert_success_response(delete_response, 200, "LIST_ITEM_DELETED")
 
     update_after_delete = update_item(
         client,
+        home_id,
         item_id,
         headers,
         quantity=5,
     )
     assert_item_not_found(update_after_delete)
 
-    delete_again = delete_item(client, item_id, headers)
+    delete_again = delete_item(client, home_id, item_id, headers)
     assert_item_not_found(delete_again)
 
 
@@ -416,13 +422,14 @@ def test_user_without_authentication_cannot_run_flow_operations(client, shared_h
 
     unauth_update = update_item(
         client,
+        home_id,
         item_id,
         {},
         quantity=3,
     )
     assert_auth_required(unauth_update)
 
-    unauth_delete = delete_item(client, item_id, {})
+    unauth_delete = delete_item(client, home_id, item_id, {})
     assert_auth_required(unauth_delete)
 
 
@@ -454,13 +461,14 @@ def test_outsider_cannot_run_flow_operations_on_foreign_home(client, shared_home
 
     outsider_update = update_item(
         client,
+        home_id,
         item_id,
         outsider_user["headers"],
         quantity=3,
     )
     assert_not_in_home(outsider_update)
 
-    outsider_delete = delete_item(client, item_id, outsider_user["headers"])
+    outsider_delete = delete_item(client, home_id, item_id, outsider_user["headers"])
     assert_not_in_home(outsider_delete)
 
 
@@ -485,13 +493,14 @@ def test_flow_operations_fail_when_home_becomes_inactive(client, private_home_se
 
     update_response = update_item(
         client,
+        home_id,
         item_id,
         headers,
         quantity=3,
     )
     assert_home_not_found(update_response)
 
-    delete_response = delete_item(client, item_id, headers)
+    delete_response = delete_item(client, home_id, item_id, headers)
     assert_home_not_found(delete_response)
 
 
@@ -523,13 +532,14 @@ def test_database_state_matches_full_flow_result(client, shared_home_setup):
 
     update_response = update_item(
         client,
+        home_id,
         milk_id,
         headers,
         quantity=3,
     )
     assert_success_response(update_response, 200, "LIST_ITEM_UPDATED")
 
-    delete_response = delete_item(client, bread_id, headers)
+    delete_response = delete_item(client, home_id, bread_id, headers)
     assert_success_response(delete_response, 200, "LIST_ITEM_DELETED")
 
     get_response = get_list(client, home_id, headers)

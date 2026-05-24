@@ -139,6 +139,7 @@ def test_owner_can_update_item_quantity(client, shared_home_setup):
 
     response = update_item(
         client,
+        home_id,
         item_id,
         headers,
         quantity=4,
@@ -174,6 +175,7 @@ def test_member_can_update_shopping_list_item_quantity(client, shared_home_setup
 
     response = update_item(
         client,
+        home_id,
         item_id,
         member_headers,
         quantity=2,
@@ -200,6 +202,7 @@ def test_update_quantity_keeps_product_name_and_notes(client, shared_home_setup)
 
     response = update_item(
         client,
+        home_id,
         item_id,
         headers,
         quantity=12,
@@ -226,6 +229,7 @@ def test_update_rejects_invalid_quantity(client, shared_home_setup, invalid_quan
 
     response = update_item(
         client,
+        home_id,
         item_id,
         headers,
         quantity=invalid_quantity,
@@ -246,8 +250,8 @@ def test_update_rejects_payload_without_quantity(client, shared_home_setup):
         quantity=1,
     )
 
-    response = client.put(
-        f"{SHOPPING_LIST_UPDATE_ENDPOINT}/item/{item_id}",
+    response = client.patch(
+        f"{SHOPPING_LIST_UPDATE_ENDPOINT}/{home_id}/{item_id}",
         json={},
         headers=headers,
     )
@@ -268,8 +272,8 @@ def test_update_rejects_payload_with_only_product_name(client, shared_home_setup
         notes="semi-skimmed",
     )
 
-    response = client.put(
-        f"{SHOPPING_LIST_UPDATE_ENDPOINT}/item/{item_id}",
+    response = client.patch(
+        f"{SHOPPING_LIST_UPDATE_ENDPOINT}/{home_id}/{item_id}",
         json={"product_name": "Oat milk"},
         headers=headers,
     )
@@ -290,8 +294,8 @@ def test_update_rejects_payload_with_only_notes(client, shared_home_setup):
         notes="whole grain",
     )
 
-    response = client.put(
-        f"{SHOPPING_LIST_UPDATE_ENDPOINT}/item/{item_id}",
+    response = client.patch(
+        f"{SHOPPING_LIST_UPDATE_ENDPOINT}/{home_id}/{item_id}",
         json={"notes": "barista"},
         headers=headers,
     )
@@ -312,8 +316,8 @@ def test_update_rejects_payload_with_quantity_and_product_name(client, shared_ho
         notes="basmati",
     )
 
-    response = client.put(
-        f"{SHOPPING_LIST_UPDATE_ENDPOINT}/item/{item_id}",
+    response = client.patch(
+        f"{SHOPPING_LIST_UPDATE_ENDPOINT}/{home_id}/{item_id}",
         json={"quantity": 5, "product_name": "Brown rice"},
         headers=headers,
     )
@@ -334,8 +338,8 @@ def test_update_rejects_payload_with_quantity_and_notes(client, shared_home_setu
         notes="for salad",
     )
 
-    response = client.put(
-        f"{SHOPPING_LIST_UPDATE_ENDPOINT}/item/{item_id}",
+    response = client.patch(
+        f"{SHOPPING_LIST_UPDATE_ENDPOINT}/{home_id}/{item_id}",
         json={"quantity": 4, "notes": "for pasta"},
         headers=headers,
     )
@@ -356,8 +360,8 @@ def test_update_rejects_payload_with_quantity_product_name_and_notes(client, sha
         notes="green",
     )
 
-    response = client.put(
-        f"{SHOPPING_LIST_UPDATE_ENDPOINT}/item/{item_id}",
+    response = client.patch(
+        f"{SHOPPING_LIST_UPDATE_ENDPOINT}/{home_id}/{item_id}",
         json={
             "quantity": 5,
             "product_name": "Green apple",
@@ -383,6 +387,7 @@ def test_user_without_authentication_cannot_update_item(client, shared_home_setu
 
     response = update_item(
         client,
+        home_id,
         item_id,
         {},
         quantity=3,
@@ -405,6 +410,7 @@ def test_user_with_invalid_token_cannot_update_item(client, shared_home_setup):
 
     response = update_item(
         client,
+        home_id,
         item_id,
         {"Authorization": "Bearer invalid-token"},
         quantity=3,
@@ -427,6 +433,7 @@ def test_user_not_in_home_cannot_update_item(client, shared_home_setup, outsider
 
     response = update_item(
         client,
+        home_id,
         item_id,
         outsider_user["headers"],
         quantity=3,
@@ -453,6 +460,7 @@ def test_user_from_other_home_cannot_update_foreign_item(
 
     response = update_item(
         client,
+        home_id,
         item_id,
         private_home_setup["headers"],
         quantity=3,
@@ -493,6 +501,7 @@ def test_cannot_update_item_when_home_is_inactive(client, private_home_setup):
 
     response = update_item(
         client,
+        home_id,
         item_id,
         headers,
         quantity=3,
@@ -516,6 +525,7 @@ def test_update_without_notes_field_keeps_existing_notes(client, shared_home_set
 
     response = update_item(
         client,
+        home_id,
         item_id,
         headers,
         quantity=3,
@@ -541,6 +551,7 @@ def test_update_item_reflects_quantity_change_in_database(client, shared_home_se
 
     response = update_item(
         client,
+        home_id,
         item_id,
         headers,
         quantity=5,
