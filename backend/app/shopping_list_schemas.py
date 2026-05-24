@@ -8,12 +8,14 @@ class AddShoppingListItemRequest(BaseModel):
     notes: Optional[str] = None
 
 class ShoppingListItemData(BaseModel):
-    item_id: UUID
+    id: UUID
     product_name: str
     quantity: int
+    notes: Optional[str] = None
     is_new: Optional[bool] = None
 
 class AddShoppingListItemResponse(BaseModel):
+    code: str
     message: str
     data: ShoppingListItemData
 
@@ -21,12 +23,12 @@ class UpdateShoppingListItemRequest(BaseModel):
     quantity: int
 
 class ShoppingListProductDetails(BaseModel):
-    item_id: UUID
+    id: UUID
     product_name: str
     quantity: int
     notes: Optional[str] = None
 
 class GetShoppingListResponse(BaseModel):
-    code: str = "SHOPPING_LIST_RETRIEVED"
+    code: str = "LIST_RETRIEVED"
     message: str
     items: list[ShoppingListProductDetails]
