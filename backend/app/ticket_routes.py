@@ -36,6 +36,7 @@ from app.inventory_routes import (
     _validate_owner_list,
     _validate_price_quantity,
 )
+from app.product_schemas import ProductCategory, CATEGORY_LABELS_CA
 from app.ticket_ocr_service import (
     ImageValidationError,
     process_ticket_image,
@@ -132,12 +133,47 @@ async def ocr_ticket(
             },
         )
 
-    # 4. Construir OcrDetectedProduct per cada ítem detectat
+    # 4. Construir OcrDetectedProduct per cada ítem detectat, enriquint amb el catàleg local si ja existeix
     productes = []
     for item in detected_items:
+        nom = item.get("nom")
+        normalized_name, _ = _normalize_product_name(nom)
+        
+        # Enriquir amb producte existent al catàleg com a fallback
+        if normalized_name:
+            catalog_product = (
+                db.query(CatalogProduct).filter(CatalogProduct.nom == normalized_name).first()
+            )
+            if catalog_product:
+                if not item.get("marca") and catalog_product.marca:
+                    item["marca"] = catalog_product.marca
+                if not item.get("categoria") and catalog_product.id_categoria:
+                    if catalog_product.categoria:
+                        try:
+                            nom_cat = catalog_product.categoria.nom
+                            for key, val in CATEGORY_LABELS_CA.items():
+                                if val == nom_cat:
+                                    item["categoria"] = key
+                                    item["categoria_label"] = val
+                                    break
+                        except Exception:
+                            pass
+                if not item.get("quantitat_envas") and catalog_product.quantitat_envas:
+                    item["quantitat_envas"] = catalog_product.quantitat_envas
+                if not item.get("nutriscore") and catalog_product.nutriscore_grade:
+                    item["nutriscore"] = catalog_product.nutriscore_grade
+                if not item.get("imatge_url") and catalog_product.imatge_url:
+                    item["imatge_url"] = catalog_product.imatge_url
+                if not item.get("ingredients_text") and catalog_product.ingredients_text:
+                    item["ingredients_text"] = catalog_product.ingredients_text
+                if not item.get("allergens_text") and catalog_product.allergens_text:
+                    item["allergens_text"] = catalog_product.allergens_text
+                if not item.get("nutriments_per_100g") and catalog_product.nutriments_per_100g:
+                    item["nutriments_per_100g"] = catalog_product.nutriments_per_100g
+
         productes.append(
             ticket_schemas.OcrDetectedProduct(
-                nom=item.get("nom"),
+                nom=nom,
                 marca=item.get("marca"),
                 categoria=item.get("categoria"),
                 categoria_label=item.get("categoria_label"),
@@ -283,6 +319,36 @@ def confirm_ticket(
         cleaned_imatge_url = _clean_imatge_url(prod_item.imatge_url)
         cleaned_nutriscore = _clean_nutriscore(prod_item.nutriscore)
         cleaned_quantitat_envas = _clean_quantitat_envas(prod_item.quantitat_envas)
+
+        # Enriquir des de Open Food Facts si falten ingredients/al·lèrgens/nutrients localment i a la petició
+        has_local_data = False
+        if catalog_product:
+            if catalog_product.ingredients_text or catalog_product.allergens_text or catalog_product.nutriments_per_100g:
+                has_local_data = True
+        
+        has_incoming_data = False
+        if prod_item.ingredients_text or prod_item.allergens_text or prod_item.nutriments_per_100g:
+            has_incoming_data = True
+
+        if not has_local_data and not has_incoming_data:
+            from app.ticket_ocr_service import RawTicketProduct, enrich_product_off
+            try:
+                off_enriched = enrich_product_off(RawTicketProduct(nom=name))
+                if off_enriched:
+                    if not cleaned_marca and off_enriched.get("marca"):
+                        cleaned_marca = _clean_marca(off_enriched["marca"])
+                    if not cleaned_imatge_url and off_enriched.get("imatge_url"):
+                        cleaned_imatge_url = _clean_imatge_url(off_enriched["imatge_url"])
+                    if not cleaned_nutriscore and off_enriched.get("nutriscore"):
+                        cleaned_nutriscore = _clean_nutriscore(off_enriched["nutriscore"])
+                    if not cleaned_quantitat_envas and off_enriched.get("quantitat_envas"):
+                        cleaned_quantitat_envas = _clean_quantitat_envas(off_enriched["quantitat_envas"])
+                    
+                    prod_item.ingredients_text = off_enriched.get("ingredients_text")
+                    prod_item.allergens_text = off_enriched.get("allergens_text")
+                    prod_item.nutriments_per_100g = off_enriched.get("nutriments_per_100g")
+            except Exception as e:
+                logger.warning("Error enriquint producte '%s' durant confirmacio: %s", name, e)
 
         if catalog_product is None:
             catalog_product = CatalogProduct(
