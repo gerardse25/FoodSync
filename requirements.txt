@@ -13,6 +13,6 @@ requests
 freezegun 
 python-multipart
 pillow
-numpy
+numpy<2.0
 paddleocr
 paddlepaddle

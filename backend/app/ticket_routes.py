@@ -47,6 +47,31 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/inventory/ticket", tags=["inventory", "ticket"])
 
 
+def _clean_nutriscore(value: str | None) -> str | None:
+    if not value:
+        return None
+    val = value.strip().upper()
+    return val[0] if val and val[0] in "ABCDE" else None
+
+
+def _clean_marca(value: str | None) -> str | None:
+    if not value:
+        return None
+    return value.strip()[:100] or None
+
+
+def _clean_imatge_url(value: str | None) -> str | None:
+    if not value:
+        return None
+    return value.strip()[:255] or None
+
+
+def _clean_quantitat_envas(value: str | None) -> str | None:
+    if not value:
+        return None
+    return value.strip()[:64] or None
+
+
 # ── POST /inventory/ticket/ocr ────────────────────────────────────────────────
 
 
@@ -123,6 +148,9 @@ async def ocr_ticket(
                 quantitat_envas=item.get("quantitat_envas"),
                 nutriscore=item.get("nutriscore"),
                 imatge_url=item.get("imatge_url"),
+                ingredients_text=item.get("ingredients_text"),
+                allergens_text=item.get("allergens_text"),
+                nutriments_per_100g=item.get("nutriments_per_100g"),
                 id_propietaris_privats=item.get("id_propietaris_privats", []),
             )
         )
@@ -250,14 +278,24 @@ def confirm_ticket(
             db.query(CatalogProduct).filter(CatalogProduct.nom == name).first()
         )
 
+        # Clean metadata before inserting or updating in DB
+        cleaned_marca = _clean_marca(prod_item.marca)
+        cleaned_imatge_url = _clean_imatge_url(prod_item.imatge_url)
+        cleaned_nutriscore = _clean_nutriscore(prod_item.nutriscore)
+        cleaned_quantitat_envas = _clean_quantitat_envas(prod_item.quantitat_envas)
+
         if catalog_product is None:
             catalog_product = CatalogProduct(
                 codi_barres=None,
                 nom=name,
-                marca=prod_item.marca,
+                marca=cleaned_marca,
                 id_categoria=category_row.id_categoria,
-                imatge_url=prod_item.imatge_url,
-                nutriscore_grade=prod_item.nutriscore,
+                imatge_url=cleaned_imatge_url,
+                nutriscore_grade=cleaned_nutriscore,
+                quantitat_envas=cleaned_quantitat_envas,
+                ingredients_text=prod_item.ingredients_text,
+                allergens_text=prod_item.allergens_text,
+                nutriments_per_100g=prod_item.nutriments_per_100g,
             )
             db.add(catalog_product)
             db.flush()
@@ -267,12 +305,20 @@ def confirm_ticket(
                 catalog_product.id_categoria = category_row.id_categoria
             
             # Actualitzar camps de metadades si estaven buits
-            if not catalog_product.marca and prod_item.marca:
-                catalog_product.marca = prod_item.marca
-            if not catalog_product.imatge_url and prod_item.imatge_url:
-                catalog_product.imatge_url = prod_item.imatge_url
-            if not catalog_product.nutriscore_grade and prod_item.nutriscore:
-                catalog_product.nutriscore_grade = prod_item.nutriscore
+            if not catalog_product.marca and cleaned_marca:
+                catalog_product.marca = cleaned_marca
+            if not catalog_product.imatge_url and cleaned_imatge_url:
+                catalog_product.imatge_url = cleaned_imatge_url
+            if not catalog_product.nutriscore_grade and cleaned_nutriscore:
+                catalog_product.nutriscore_grade = cleaned_nutriscore
+            if not catalog_product.quantitat_envas and cleaned_quantitat_envas:
+                catalog_product.quantitat_envas = cleaned_quantitat_envas
+            if not catalog_product.ingredients_text and prod_item.ingredients_text:
+                catalog_product.ingredients_text = prod_item.ingredients_text
+            if not catalog_product.allergens_text and prod_item.allergens_text:
+                catalog_product.allergens_text = prod_item.allergens_text
+            if not catalog_product.nutriments_per_100g and prod_item.nutriments_per_100g:
+                catalog_product.nutriments_per_100g = prod_item.nutriments_per_100g
 
         # Determinar si és privat
         is_private = len(owner_ids_normalized) > 0

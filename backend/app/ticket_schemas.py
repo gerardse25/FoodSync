@@ -53,6 +53,9 @@ class OcrDetectedProduct(BaseModel):
     quantitat_envas: Optional[str] = None
     nutriscore: Optional[str] = None
     imatge_url: Optional[str] = None
+    ingredients_text: Optional[str] = None
+    allergens_text: Optional[str] = None
+    nutriments_per_100g: Optional[dict] = None
 
     # Propietaris (opcional, assignació posterior)
     id_propietaris_privats: List[UUID] = Field(default_factory=list)
@@ -98,6 +101,10 @@ class ConfirmTicketProductItem(BaseModel):
     marca: Optional[str] = None
     imatge_url: Optional[str] = None
     nutriscore: Optional[str] = None
+    quantitat_envas: Optional[str] = None
+    ingredients_text: Optional[str] = None
+    allergens_text: Optional[str] = None
+    nutriments_per_100g: Optional[dict] = None
 
     data_caducitat: Optional[date] = None
     data_compra: Optional[date] = None
