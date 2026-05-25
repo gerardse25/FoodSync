@@ -54,6 +54,11 @@ class OcrDetectedProduct(BaseModel):
     quantitat_envas: Optional[str] = None
     nutriscore: Optional[str] = None
     imatge_url: Optional[str] = None
+    nutrient_levels: Optional[dict] = None
+    nutriments_100g: Optional[dict] = None
+    ingredients_text: Optional[str] = None
+    allergens_text: Optional[str] = None
+    nutriments_per_100g: Optional[dict] = None
 
     # Propietaris (opcional, assignació posterior)
     id_propietaris_privats: List[UUID] = Field(default_factory=list)
@@ -87,14 +92,31 @@ class ConfirmTicketProductItem(BaseModel):
 
     Camps opcionals:
       - data_caducitat
-      - id_propietaris_privats
       - data_compra
+      - id_propietaris_privats
+      - marca
+      - quantitat_envas
+      - nutriscore
+      - imatge_url
+      - nutrient_levels
+      - nutriments_100g
     """
 
     nom: Optional[str] = None
     categoria: Optional[ProductCategory] = None
     quantitat: Optional[int] = None
     preu: Optional[Decimal] = None
+
+    # Enriquiment OFF reenviat pel frontend des del preview OCR
+    marca: Optional[str] = None
+    quantitat_envas: Optional[str] = None
+    nutriscore: Optional[str] = None
+    imatge_url: Optional[str] = None
+    nutrient_levels: Optional[dict] = None
+    nutriments_100g: Optional[dict] = None
+    ingredients_text: Optional[str] = None
+    allergens_text: Optional[str] = None
+    nutriments_per_100g: Optional[dict] = None
 
     data_caducitat: Optional[date] = None
     data_compra: Optional[date] = None
@@ -120,6 +142,15 @@ class ConfirmedProductItem(BaseModel):
     quantitat: int
     categoria: str
     preu: Optional[str] = None
+    marca: Optional[str] = None
+    quantitat_envas: Optional[str] = None
+    nutriscore: Optional[str] = None
+    imatge_url: Optional[str] = None
+    nutrient_levels: Optional[dict] = None
+    nutriments_100g: Optional[dict] = None
+    ingredients_text: Optional[str] = None
+    allergens_text: Optional[str] = None
+    nutriments_per_100g: Optional[dict] = None
     data_compra: Optional[date] = None
     data_caducitat: Optional[date] = None
     data_caducitat_estimada: bool = False

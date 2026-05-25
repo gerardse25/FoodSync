@@ -137,6 +137,78 @@ def _extract_nutriments_per_100g(product_data: dict) -> dict | None:
     return result
 
 
+def _extract_nutrient_levels(product_data: dict) -> dict | None:
+    """
+    Extreu els nivells nutricionals d'Open Food Facts per mostrar colors.
+
+    OFF retorna:
+    {
+        "fat": "moderate",
+        "saturated-fat": "high",
+        "sugars": "low",
+        "salt": "low"
+    }
+
+    Backend retorna:
+    {
+        "fat": "moderate",
+        "saturated_fat": "high",
+        "sugars": "low",
+        "salt": "low"
+    }
+    """
+    raw_levels = product_data.get("nutrient_levels") or {}
+
+    key_mapping = {
+        "fat": "fat",
+        "saturated-fat": "saturated_fat",
+        "sugars": "sugars",
+        "salt": "salt",
+    }
+
+    valid_values = {"low", "moderate", "high"}
+
+    result = {}
+
+    for off_key, internal_key in key_mapping.items():
+        value = raw_levels.get(off_key)
+
+        if value in valid_values:
+            result[internal_key] = value
+
+    return result or None
+
+
+def _extract_nutriments_100g_for_levels(product_data: dict) -> dict | None:
+    """
+    Extreu només els valors necessaris per mostrar l'apartat visual:
+    greixos, greixos saturats, sucres i sal.
+    """
+    nutriments = product_data.get("nutriments", {}) or {}
+
+    field_mapping = {
+        "fat_100g": "fat",
+        "saturated-fat_100g": "saturated_fat",
+        "sugars_100g": "sugars",
+        "salt_100g": "salt",
+    }
+
+    result = {}
+
+    for off_key, internal_key in field_mapping.items():
+        value = nutriments.get(off_key)
+
+        if value is None:
+            continue
+
+        try:
+            result[internal_key] = float(value)
+        except (TypeError, ValueError):
+            continue
+
+    return result or None
+
+
 def _fetch_off_product(barcode: str) -> dict | None:
     barcode = barcode.strip()
 
@@ -247,5 +319,7 @@ def lookup_barcode_enriched(barcode: str) -> dict | None:
         "allergens_text": _extract_allergens(product_data),
         "nutriscore_grade": nutriscore,
         "nutriments_per_100g": _extract_nutriments_per_100g(product_data),
+        "nutrient_levels": _extract_nutrient_levels(product_data),
+        "nutriments_100g": _extract_nutriments_100g_for_levels(product_data),
         "image_url": _clean_text(image_url),
     }

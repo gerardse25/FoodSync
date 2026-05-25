@@ -84,6 +84,8 @@ class InventoryProductDetailSchema(BaseModel):
     informacio_nutricional_100g_ml: Optional[InventoryNutritionSchema] = None
     ingredients: Optional[str] = None
     allergens: Optional[str] = None
+    nutrient_levels: Optional[dict] = None
+    nutriments_100g: Optional[dict] = None
 
     imatge_url: Optional[str] = None
 
@@ -131,6 +133,8 @@ class CreateInventoryProductResponseItem(BaseModel):
     data_caducitat: Optional[date] = None
     data_caducitat_estimada: bool = False
     codi_barres: Optional[str] = None
+    nutrient_levels: Optional[dict] = None
+    nutriments_100g: Optional[dict] = None
     metode_registre: str
     paid_by_user_id: Optional[str] = None
     owner_user_ids: List[str] = Field(default_factory=list)
@@ -155,6 +159,8 @@ class BarcodeLookupProductSchema(BaseModel):
     quantitat_envas: Optional[str] = None
     nutriscore: Optional[str] = None
     imatge_url: Optional[str] = None
+    nutrient_levels: Optional[dict] = None
+    nutriments_100g: Optional[dict] = None
 
     # Preview de caducitat per a la pantalla de validació.
     # Encara no es persisteix res fins que l'usuari confirmi.
@@ -185,6 +191,8 @@ class ConfirmBarcodeProductRequest(BaseModel):
     categoria: Optional[ProductCategory] = None
     preu: Optional[Decimal] = None
     quantitat: Optional[int] = None
+    nutrient_levels: Optional[dict] = None
+    nutriments_100g: Optional[dict] = None
     data_compra: Optional[date] = None
     data_caducitat: Optional[date] = None
     id_propietaris_privats: List[UUID] = Field(

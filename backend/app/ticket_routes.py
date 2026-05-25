@@ -175,6 +175,11 @@ async def ocr_ticket(
                 data_caducitat_estimada=preview_expiration_estimated,
                 quantitat_envas=item.get("quantitat_envas"),
                 nutriscore=item.get("nutriscore"),
+                nutrient_levels=item.get("nutrient_levels"),
+                nutriments_100g=item.get("nutriments_100g"),
+                ingredients_text=item.get("ingredients_text"),
+                allergens_text=item.get("allergens_text"),
+                nutriments_per_100g=item.get("nutriments_per_100g"),
                 imatge_url=item.get("imatge_url"),
                 id_propietaris_privats=item.get("id_propietaris_privats", []),
             )
@@ -326,9 +331,16 @@ def confirm_ticket(
             catalog_product = CatalogProduct(
                 codi_barres=None,
                 nom=name,
-                marca=None,
+                marca=prod_item.marca,
                 id_categoria=category_row.id_categoria,
-                imatge_url=None,
+                imatge_url=prod_item.imatge_url,
+                quantitat_envas=prod_item.quantitat_envas,
+                nutriscore_grade=prod_item.nutriscore,
+                nutrient_levels=prod_item.nutrient_levels,
+                nutriments_100g=prod_item.nutriments_100g,
+                ingredients_text=prod_item.ingredients_text,
+                allergens_text=prod_item.allergens_text,
+                nutriments_per_100g=prod_item.nutriments_per_100g,
             )
             db.add(catalog_product)
             db.flush()
@@ -336,6 +348,37 @@ def confirm_ticket(
             # Actualitzar categoria si estava absent
             if catalog_product.id_categoria is None:
                 catalog_product.id_categoria = category_row.id_categoria
+
+            # Completar snapshot OFF si el producte OCR venia enriquit
+            if not catalog_product.marca and prod_item.marca:
+                catalog_product.marca = prod_item.marca
+
+            if not catalog_product.imatge_url and prod_item.imatge_url:
+                catalog_product.imatge_url = prod_item.imatge_url
+
+            if not catalog_product.quantitat_envas and prod_item.quantitat_envas:
+                catalog_product.quantitat_envas = prod_item.quantitat_envas
+
+            if not catalog_product.nutriscore_grade and prod_item.nutriscore:
+                catalog_product.nutriscore_grade = prod_item.nutriscore
+
+            if not catalog_product.nutrient_levels and prod_item.nutrient_levels:
+                catalog_product.nutrient_levels = prod_item.nutrient_levels
+
+            if not catalog_product.nutriments_100g and prod_item.nutriments_100g:
+                catalog_product.nutriments_100g = prod_item.nutriments_100g
+
+            if not catalog_product.ingredients_text and prod_item.ingredients_text:
+                catalog_product.ingredients_text = prod_item.ingredients_text
+
+            if not catalog_product.allergens_text and prod_item.allergens_text:
+                catalog_product.allergens_text = prod_item.allergens_text
+
+            if (
+                not catalog_product.nutriments_per_100g
+                and prod_item.nutriments_per_100g
+            ):
+                catalog_product.nutriments_per_100g = prod_item.nutriments_per_100g
 
         # Determinar si és privat
         is_private = len(owner_ids_normalized) > 0
@@ -373,6 +416,16 @@ def confirm_ticket(
                 quantitat=inv_product.quantitat,
                 categoria=category_row.nom,
                 preu=str(inv_product.preu) if inv_product.preu is not None else None,
+                # Snapshot OFF retornat també en la resposta de confirmació
+                marca=catalog_product.marca,
+                quantitat_envas=catalog_product.quantitat_envas,
+                nutriscore=catalog_product.nutriscore_grade,
+                imatge_url=catalog_product.imatge_url,
+                nutrient_levels=catalog_product.nutrient_levels,
+                nutriments_100g=catalog_product.nutriments_100g,
+                ingredients_text=catalog_product.ingredients_text,
+                allergens_text=catalog_product.allergens_text,
+                nutriments_per_100g=catalog_product.nutriments_per_100g,
                 data_compra=inv_product.data_compra,
                 data_caducitat=inv_product.data_caducitat,
                 data_caducitat_estimada=inv_product.data_caducitat_estimada,

@@ -216,6 +216,12 @@ def _apply_off_snapshot_to_catalog_product(
     if not catalog_product.nutriments_per_100g:
         catalog_product.nutriments_per_100g = off_data.get("nutriments_per_100g")
 
+    if not catalog_product.nutrient_levels:
+        catalog_product.nutrient_levels = off_data.get("nutrient_levels")
+
+    if not catalog_product.nutriments_100g:
+        catalog_product.nutriments_100g = off_data.get("nutriments_100g")
+
     catalog_product.off_last_synced_at = datetime.utcnow()
 
 
@@ -244,6 +250,8 @@ def _build_create_response(inv_prod, cat_prod, cat_row, missatge: str):
                 if inv_prod.paid_by_user_id is not None
                 else None
             ),
+            nutrient_levels=cat_prod.nutrient_levels,
+            nutriments_100g=cat_prod.nutriments_100g,
             owner_user_ids=owners_list,
         ),
     )
@@ -606,6 +614,8 @@ def get_inventory_product_detail(
         propietaris=owners_data,
         estat_stock=estat_stock,
         nutriscore=cat_prod.nutriscore_grade,
+        nutrient_levels=cat_prod.nutrient_levels,
+        nutriments_100g=cat_prod.nutriments_100g,
         informacio_nutricional_100g_ml=nutricio,
         ingredients=cat_prod.ingredients_text,
         allergens=cat_prod.allergens_text,
@@ -786,6 +796,8 @@ def lookup_inventory_product_by_barcode(
                 quantitat_envas=catalog_product.quantitat_envas,
                 nutriscore=catalog_product.nutriscore_grade,
                 imatge_url=catalog_product.imatge_url,
+                nutrient_levels=catalog_product.nutrient_levels,
+                nutriments_100g=catalog_product.nutriments_100g,
                 data_compra=preview_purchase_date,
                 data_caducitat=preview_expiration_date,
                 data_caducitat_estimada=preview_expiration_estimated,
@@ -840,6 +852,8 @@ def lookup_inventory_product_by_barcode(
             quantitat_envas=result.get("package_quantity_label"),
             nutriscore=result.get("nutriscore_grade"),
             imatge_url=result.get("image_url"),
+            nutrient_levels=result.get("nutrient_levels"),
+            nutriments_100g=result.get("nutriments_100g"),
             data_compra=preview_purchase_date,
             data_caducitat=preview_expiration_date,
             data_caducitat_estimada=preview_expiration_estimated,
@@ -998,6 +1012,14 @@ def confirm_and_add_barcode_product(
 
     if off_data and off_data.get("found"):
         _apply_off_snapshot_to_catalog_product(catalog_product, off_data)
+
+    # Si el frontend reenvia l'snapshot nutricional del preview,
+    # el guardem encara que no hàgim consultat OFF en aquest moment.
+    if data.nutrient_levels is not None:
+        catalog_product.nutrient_levels = data.nutrient_levels
+
+    if data.nutriments_100g is not None:
+        catalog_product.nutriments_100g = data.nutriments_100g
 
     inventory_product = InventoryProduct(
         id_llar=home.id,

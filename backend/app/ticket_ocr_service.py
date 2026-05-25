@@ -31,7 +31,16 @@ from typing import Optional
 
 import requests
 
-from app.barcode_service import HEADERS as OFF_HEADERS
+from app.barcode_service import (
+    HEADERS as OFF_HEADERS,
+)
+from app.barcode_service import (
+    _extract_allergens,
+    _extract_ingredients,
+    _extract_nutrient_levels,
+    _extract_nutriments_100g_for_levels,
+    _extract_nutriments_per_100g,
+)
 from app.category_mapper import map_off_to_internal_category
 from app.product_schemas import CATEGORY_LABELS_CA
 
@@ -346,7 +355,10 @@ def _search_off_by_name(name: str) -> list[dict]:
             "product_name,brands,nutrition_grades,categories_tags,"
             "categories_hierarchy,compared_to_category,ciqual_food_name_tags,"
             "food_groups_tags,pnns_groups_1_tags,pnns_groups_2_tags,"
-            "generic_name,_keywords,quantity,image_front_url,image_url"
+            "generic_name,_keywords,quantity,image_front_url,image_url,"
+            "nutrient_levels,nutriments,"
+            "ingredients_text_es,ingredients_text,ingredients_text_en,ingredients_text_ca,"
+            "allergens,allergens_tags,allergens_hierarchy"
         ),
     }
     try:
@@ -411,7 +423,19 @@ def enrich_product_off(raw: RawTicketProduct) -> dict:
     category_enum = map_off_to_internal_category(best)
     enriched["categoria"] = category_enum
     enriched["categoria_label"] = CATEGORY_LABELS_CA.get(category_enum)
+
     enriched["quantitat_envas"] = (best.get("quantity") or "").strip() or None
+
+    # Nivells nutricionals per pintar colors verd/groc/vermell.
+    enriched["nutrient_levels"] = _extract_nutrient_levels(best)
+
+    # Valors per 100g/ml només per als indicadors visuals.
+    enriched["nutriments_100g"] = _extract_nutriments_100g_for_levels(best)
+
+    # Snapshot complet OFF per al detall del producte.
+    enriched["ingredients_text"] = _extract_ingredients(best)
+    enriched["allergens_text"] = _extract_allergens(best)
+    enriched["nutriments_per_100g"] = _extract_nutriments_per_100g(best)
 
     return enriched
 

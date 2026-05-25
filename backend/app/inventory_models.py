@@ -49,6 +49,10 @@ class CatalogProduct(Base):
     allergens_text = Column(Text, nullable=True)
     nutriscore_grade = Column(String(1), nullable=True)
     nutriments_per_100g = Column(JSON, nullable=True)
+    # Camps extra valors nutricionals (colors i percentatges)
+    nutrient_levels = Column(JSON, nullable=True)
+    nutriments_100g = Column(JSON, nullable=True)
+
     off_last_synced_at = Column(DateTime, nullable=True)
 
     categoria = relationship("Category")
