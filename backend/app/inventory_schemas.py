@@ -266,3 +266,20 @@ class EstimateExpirationResponse(BaseModel):
     data_compra: date
     data_caducitat: date
     data_caducitat_estimada: bool = True
+
+
+# =========================
+# MODIFICAR INFO BASICA PRODUCTE
+# =========================
+
+class ModifyInventoryProductRequest(BaseModel):
+    nom: Optional[str] = None
+    categoria: Optional[ProductCategory] = None
+    preu: Optional[Decimal] = None
+    data_caducitat: Optional[date] = None
+
+
+class ModifyInventoryProductResponse(BaseModel):
+    code: str
+    missatge: str
+    producte: InventoryProductDetailSchema
