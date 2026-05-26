@@ -55,10 +55,10 @@ def assert_all_expiring_soon(products):
 
 
 def assert_all_ok(products):
-    today = date.today().isoformat()
+    ok_from = (date.today() + timedelta(days=7)).isoformat()
     for product in products:
         assert product["data_caducitat"] is not None
-        assert product["data_caducitat"] > today
+        assert product["data_caducitat"] > ok_from
 
 
 def make_inventory_product_with_expiry(
@@ -416,3 +416,53 @@ def test_inventory_invalid_expiry_filter_is_ignored_and_does_not_break_other_fil
     assert "milk ok" in names
     assert "rice ok" not in names
     assert_all_names_contain(products, "milk")
+
+
+def test_inventory_filter_by_name_and_ok_expiry_returns_only_products_after_next_7_days(
+    client,
+    shared_home_setup,
+    seed_product_db,
+):
+    headers = shared_home_setup["owner_headers"]
+    home_id = shared_home_setup["home_id"]
+    owner_ctx = shared_home_setup["owner"]
+
+    today = date.today()
+
+    make_inventory_product_with_expiry(
+        seed_product_db, home_id, owner_ctx,
+        name="milk soon",
+        category="OTHER",
+        quantity=1,
+        expiration_date=today + timedelta(days=7),
+    )
+    make_inventory_product_with_expiry(
+        seed_product_db, home_id, owner_ctx,
+        name="milk ok",
+        category="OTHER",
+        quantity=1,
+        expiration_date=today + timedelta(days=8),
+    )
+    make_inventory_product_with_expiry(
+        seed_product_db, home_id, owner_ctx,
+        name="rice ok",
+        category="OTHER",
+        quantity=1,
+        expiration_date=today + timedelta(days=20),
+    )
+
+    response = client.get(
+        f"{INVENTORY_ENDPOINT}?nom=milk&expiry_filter=ok",
+        headers=headers,
+    )
+    assert response.status_code == 200, response.text
+
+    body = response.json()
+    products = get_response_products(body)
+    names = get_response_names(body)
+
+    assert "milk ok" in names
+    assert "milk soon" not in names
+    assert "rice ok" not in names
+    assert_all_names_contain(products, "milk")
+    assert_all_ok(products)

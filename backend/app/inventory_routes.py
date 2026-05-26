@@ -338,7 +338,7 @@ def get_inventory(
         None, description="Filtre per UUID de propietari"
     ),
     nutrition_score: Optional[str] = Query(
-        None, description="[Futur] Nutriscore (A-E). Acceptat, ignorat."
+        None, description="Filtre per Nutri-Score (A, B, C, D, E)"
     ),
     expiry_filter: Optional[str] = Query(
         None, description="Filtre per caducitat (expired, expiring_soon, ok)"
@@ -387,6 +387,16 @@ def get_inventory(
                 400,
                 "OWNER_NOT_IN_HOME",
             )
+    # Validació parametre nutricional
+    if nutrition_score:
+        normalized_nutrition_score = nutrition_score.strip().upper()
+        if normalized_nutrition_score not in {"A", "B", "C", "D", "E"}:
+            return _json_error(
+                "nutrition_score ha de ser A, B, C, D o E.",
+                400,
+                "NUTRITION_SCORE_INVALID",
+            )
+        nutrition_score = normalized_nutrition_score
 
     # Validació rang quantitat
     if (

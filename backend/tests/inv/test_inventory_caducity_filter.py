@@ -166,7 +166,7 @@ def test_filter_by_expiring_soon_returns_only_products_expiring_within_next_7_da
         assert lower_bound <= product["data_caducitat"] <= upper_bound
 
 
-def test_filter_by_ok_returns_only_products_with_expiration_date_after_today(
+def test_filter_by_ok_returns_only_products_with_expiration_date_after_next_7_days(
     client,
     shared_home_setup,
     seed_product_db,
@@ -176,6 +176,7 @@ def test_filter_by_ok_returns_only_products_with_expiration_date_after_today(
     owner_ctx = shared_home_setup["owner"]
 
     today = date.today()
+    soon_limit = today + timedelta(days=7)
 
     make_inventory_product_with_expiry(
         seed_product_db,
@@ -199,6 +200,15 @@ def test_filter_by_ok_returns_only_products_with_expiration_date_after_today(
         seed_product_db,
         home_id,
         owner_ctx,
+        name="soon product",
+        category="OTHER",
+        quantity=1,
+        expiration_date=today + timedelta(days=7),
+    )
+    make_inventory_product_with_expiry(
+        seed_product_db,
+        home_id,
+        owner_ctx,
         name="ok product",
         category="OTHER",
         quantity=1,
@@ -215,9 +225,10 @@ def test_filter_by_ok_returns_only_products_with_expiration_date_after_today(
     assert "ok product" in names
     assert "expired product" not in names
     assert "today product" not in names
+    assert "soon product" not in names
 
     for product in products:
-        assert product["data_caducitat"] > today.isoformat()
+        assert product["data_caducitat"] > soon_limit.isoformat()
 
 
 def test_filter_by_expiry_with_no_matches_returns_empty_list(

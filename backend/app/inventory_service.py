@@ -19,6 +19,7 @@ from dataclasses import dataclass
 from typing import Optional
 from uuid import UUID
 
+from sqlalchemy import func
 from sqlalchemy.orm import Query
 
 from app.inventory_models import (
@@ -103,7 +104,7 @@ def apply_active_filters(
     return query
 
 
-def apply_future_filters(
+def caducity_nutrition_filters(
     query: Query,
     nutrition_score: Optional[str],
     expiry_filter: Optional[str],
@@ -113,7 +114,11 @@ def apply_future_filters(
     """
 
     if nutrition_score:
-        pass
+        normalized_score = nutrition_score.strip().upper()
+        if normalized_score:
+            query = query.filter(
+                func.upper(CatalogProduct.nutriscore_grade) == normalized_score
+            )
 
     if expiry_filter:
         from datetime import date, timedelta
@@ -127,7 +132,8 @@ def apply_future_filters(
                 InventoryProduct.data_caducitat <= soon,
             )
         elif expiry_filter == "ok":
-            query = query.filter(InventoryProduct.data_caducitat > today)
+            soon = today + timedelta(days=7)
+            query = query.filter(InventoryProduct.data_caducitat > soon)
 
     # Ordenar per data de caducitat (els que caduquen abans primer)
     query = query.order_by(InventoryProduct.data_caducitat.asc().nullslast())
@@ -165,6 +171,6 @@ def get_filtered_products(
         )
 
     query = apply_active_filters(base_query, filters)
-    query = apply_future_filters(query, filters.nutrition_score, filters.expiry_filter)
+    query = caducity_nutrition_filters(query, filters.nutrition_score, filters.expiry_filter)
 
     return query.all()
