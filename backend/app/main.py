@@ -5,6 +5,7 @@ import app.home_models
 import app.inventory_models
 import app.models
 import app.notification_models
+import app.shopping_list_models
 from app.cost_routes import router as cost_router
 from app.database import Base, engine
 from app.home_routes import router as home_router
@@ -13,6 +14,7 @@ from app.inventory_modify import router as inventory_modify_router
 from app.inventory_routes import router as inventory_router
 from app.notification_routes import router as notification_router
 from app.routes import router
+from app.shopping_list_routes import router as shopping_list_router
 from app.ticket_routes import router as ticket_router
 
 app = FastAPI()
@@ -27,6 +29,7 @@ app.include_router(inventory_delete_router)
 app.include_router(ticket_router)
 app.include_router(cost_router)
 app.include_router(notification_router)
+app.include_router(shopping_list_router)
 
 
 # IMPORTANT:

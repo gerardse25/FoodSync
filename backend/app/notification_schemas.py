@@ -23,8 +23,8 @@ class NotificationPreferenceResponse(BaseModel):
 class NotificationItem(BaseModel):
     id: str
     tipus: str
-    id_producte: str
-    nom_producte: str
+    id_producte: Optional[str] = None
+    nom_producte: Optional[str] = None
     data_caducitat: Optional[date] = None
     title: str
     message: str

@@ -34,6 +34,7 @@ from app.home_schemas import (
     KickMemberSchema,
     MemberResponse,
 )
+from app.notification_service import notify_home_member_joined
 
 router = APIRouter(prefix="/home", tags=["home"])
 
@@ -390,6 +391,13 @@ def join_home(
         db.add(membership)
 
     home.updated_at = datetime.utcnow()
+    db.flush()
+    notify_home_member_joined(
+        db,
+        home_id=home.id,
+        joined_user=user,
+        joined_at=membership.joined_at,
+    )
     db.commit()
     db.refresh(home)
 

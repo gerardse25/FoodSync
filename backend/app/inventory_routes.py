@@ -27,6 +27,7 @@ from app.inventory_models import (
 )
 from app.inventory_service import InventoryFilterParams, get_filtered_products
 from app.models import User
+from app.notification_service import notify_home_product_added
 from app.product_schemas import CATEGORY_LABELS_CA, ProductCategory
 from app.validation import contains_control_characters, contains_escape_sequences
 
@@ -725,8 +726,16 @@ def create_inventory_product_manual(
                 user_id=owner_id,
             )
         )
+    db.flush()
 
     home.updated_at = datetime.utcnow()
+    notify_home_product_added(
+        db,
+        home_id=home.id,
+        inventory_product=inventory_product,
+        product_name=catalog_product.nom,
+        added_by=user,
+    )
 
     db.commit()
     db.refresh(inventory_product)
@@ -1043,8 +1052,16 @@ def confirm_and_add_barcode_product(
                 user_id=owner_id,
             )
         )
+    db.flush()
 
     home.updated_at = datetime.utcnow()
+    notify_home_product_added(
+        db,
+        home_id=home.id,
+        inventory_product=inventory_product,
+        product_name=catalog_product.nom,
+        added_by=user,
+    )
 
     db.commit()
     db.refresh(inventory_product)

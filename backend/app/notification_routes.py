@@ -119,11 +119,11 @@ def list_notifications(
 
     rows = (
         db.query(Notification, InventoryProduct, CatalogProduct)
-        .join(
+        .outerjoin(
             InventoryProduct,
             Notification.id_inventari == InventoryProduct.id_inventari,
         )
-        .join(
+        .outerjoin(
             CatalogProduct,
             InventoryProduct.id_producte_cataleg == CatalogProduct.id_producte_cataleg,
         )
@@ -139,11 +139,11 @@ def list_notifications(
             {
                 "id": str(notification.id),
                 "tipus": notification.tipus,
-                "id_producte": str(product.id_inventari),
-                "nom_producte": catalog_product.nom,
+                "id_producte": str(product.id_inventari) if product else None,
+                "nom_producte": catalog_product.nom if catalog_product else None,
                 "data_caducitat": (
                     product.data_caducitat.isoformat()
-                    if product.data_caducitat
+                    if product and product.data_caducitat
                     else None
                 ),
                 "title": notification.title,

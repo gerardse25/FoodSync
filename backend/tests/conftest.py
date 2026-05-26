@@ -95,6 +95,10 @@ def app_modules(tmp_path, monkeypatch):
     cost_routes = _optional_import("app.cost_routes")
     cost_schemas = _optional_import("app.cost_schemas")
 
+    shopping_list_models = _optional_import("app.shopping_list_models")
+    shopping_list_routes = _optional_import("app.shopping_list_routes")
+    shopping_list_schemas = _optional_import("app.shopping_list_schemas")
+
     database.Base.metadata.drop_all(bind=database.engine)
     database.Base.metadata.create_all(bind=database.engine)
 
@@ -131,6 +135,9 @@ def app_modules(tmp_path, monkeypatch):
         "notification_service": notification_service,
         "cost_routes": cost_routes,
         "cost_schemas": cost_schemas,
+        "shopping_list_models": shopping_list_models,
+        "shopping_list_routes": shopping_list_routes,
+        "shopping_list_schemas": shopping_list_schemas,
     }
 
     main.app.dependency_overrides.clear()

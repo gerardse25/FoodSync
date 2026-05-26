@@ -43,6 +43,7 @@ from app.inventory_routes import (
     _validate_owner_list,
     _validate_price_quantity,
 )
+from app.notification_service import notify_home_product_added
 from app.ticket_ocr_service import (
     ImageValidationError,
     process_ticket_image,
@@ -407,6 +408,7 @@ def confirm_ticket(
                     user_id=owner_id,
                 )
             )
+        db.flush()
 
         guardats.append(
             ticket_schemas.ConfirmedProductItem(
@@ -437,6 +439,13 @@ def confirm_ticket(
                 metode_registre=inv_product.metode_registre,
                 owner_user_ids=[str(oid) for oid in owner_ids_normalized],
             )
+        )
+        notify_home_product_added(
+            db,
+            home_id=home.id,
+            inventory_product=inv_product,
+            product_name=catalog_product.nom,
+            added_by=user,
         )
 
     home.updated_at = datetime.utcnow()
