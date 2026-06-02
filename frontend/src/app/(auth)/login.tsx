@@ -1,9 +1,18 @@
+import { useAuth } from "@/src/context/AuthContext";
 import { router } from "expo-router";
 import { ArrowLeft, CircleAlert, Eye, EyeOff } from "lucide-react-native";
 import React, { useRef, useState } from "react";
-import { Text, TextInput, TouchableOpacity, View, Alert } from "react-native";
+import {
+  Alert,
+  Platform,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from "react-native";
 import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { authService } from "../../services/authService";
 
 export default function LoginScreen() {
   const [email, setEmail] = useState("");
@@ -15,17 +24,10 @@ export default function LoginScreen() {
 
   const passwordInputRef = useRef<TextInput>(null);
 
-  // Aquí definimos nuestro usuario para simular la autenticación. En una app real, esto vendría de una base de datos o servicio de autenticación.
-  const usersDB = [
-    {
-      email: "usuario@gmail.com",
-      password: "Usuario123!",
-    },
-  ];
+  const [isLoading, setIsLoading] = useState(false);
 
-  /**
-   * Validación de formato de email
-   */
+  const { checkSession } = useAuth();
+
   const isValidEmail = (email: string) => {
     const trimmedEmail = email.trim();
     if (trimmedEmail.length > 128) return false;
@@ -35,96 +37,52 @@ export default function LoginScreen() {
 
   const handleEmailEndEditing = (text: string) => {
     if (!isValidEmail(text)) {
-      setEmailError("Correo no válido");
+      setEmailError("Correu no vàlid");
     } else {
       setEmailError("");
     }
   };
 
-  /*
-    * Validación de contraseña (mínimo 6 caracteres para login)
-  */
   const isValidPassword = (password: string) => {
     return password.length >= 6;
   };
 
   const handlePasswordEndEditing = (text: string) => {
-  if (!isValidPassword(text)) {
-    setPasswordError("La contraseña debe tener al menos 6 caracteres");
-  } else {
-    setPasswordError("");
-  }
-};
+    if (!isValidPassword(text)) {
+      setPasswordError("La contrasenya ha de tenir almenys 6 caràcters");
+    } else {
+      setPasswordError("");
+    }
+  };
 
-  /**
-   * Lógica de Inicio de Sesión
-   */
-const handleLogin = () => {
-  let isValid = true;
 
-  // Validar Email
-  if (!isValidEmail(email)) {
-    setEmailError("Correo no válido");
-    isValid = false;
-  } else {
-    setEmailError("");
-  }
+  const handleLogin = async () => {
+    let isValid = true;
 
-  // Validar Contraseña (mínimo 6 caracteres para login)
-  if (!isValidPassword(password)) {
-    setPasswordError("La contraseña debe tener al menos 6 caracteres");
-    isValid = false;
-  } else {
-    setPasswordError("");
-  }
+    if (!isValidEmail(email)) {
+      setEmailError("Correu no vàlid");
+      isValid = false;
+    }
+    if (!isValidPassword(password)) {
+      setPasswordError("Revisa la teva contrasenya");
+      isValid = false;
+    }
 
-  // Si los datos no son válidos, mostramos un alert de error
-  if (!isValid) {
-    Alert.alert(
-      "Error en los datos",
-      "Por favor, revisa los campos. Asegúrate de que el correo y la contraseña sean correctos.",
-      [
-        {
-          text: "OK",
-        },
-      ],
-      { cancelable: false }
-    );
-    return; // Detener la ejecución de la función si hay errores
-  }
+    if (!isValid) return;
 
-  // Buscamos el usuario en nuestra "base de datos" simulada y verificamos la contraseña
-  const userFound = usersDB.find(
-    (user) => user.email === email.trim() && user.password === password
-  );
+    setIsLoading(true);
 
-  if (userFound) {
-    // Si el usuario está en la base de datos, mostramos el alert de éxito
-    Alert.alert(
-      "Inicio de sesión exitoso",
-      "Bienvenido a FoodSync",
-      [
-        {
-          text: "OK",
-          onPress: () => router.replace("/(tabs)/settings"),
-        },
-      ],
-      { cancelable: false }
-    );
-  } else {
-    // Si no se encuentra el usuario, mostramos el alert de error
-    Alert.alert(
-      "Error al hacer inicio de sesión",
-      "Verifica tu correo y contraseña.",
-      [
-        {
-          text: "OK",
-        },
-      ],
-      { cancelable: false }
-    );
-  }
-};
+    try {
+      await authService.login(email.trim(), password);
+      await checkSession();
+    } catch (error: any) {
+      if (Platform.OS !== "web") {
+        Alert.alert("Error de inici de sessió", error);
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   return (
     <SafeAreaView className="flex-1 bg-[#F8FAF8]">
@@ -148,17 +106,17 @@ const handleLogin = () => {
         {/* Contenido Principal */}
         <View className="flex-1 px-6 pt-4">
           <Text className="text-3xl font-bold mb-2 text-gray-900">
-            Bienvenido de nuevo
+            Benvingut de nou
           </Text>
           <Text className="text-gray-500 mb-8">
-            Inicia sesión en tu cuenta de FoodSync para continuar
+            Inicia sessió en la teva compte de FoodSync per continuar
           </Text>
 
           <View className="space-y-5">
             {/* Input: Email */}
             <View className="space-y-2">
               <Text className="font-medium text-gray-900">
-                Correo electrónico
+                Correu electrònic
               </Text>
               <TextInput
                 value={email}
@@ -167,7 +125,7 @@ const handleLogin = () => {
                   if (emailError) setEmailError("");
                 }}
                 onEndEditing={(e) => handleEmailEndEditing(e.nativeEvent.text)}
-                placeholder="correo@email.com"
+                placeholder="correu@email.com"
                 placeholderTextColor="#9CA3AF"
                 keyboardType="email-address"
                 autoCapitalize="none"
@@ -181,14 +139,16 @@ const handleLogin = () => {
                 </View>
               ) : null}
             </View>
-
             {/* Input: Password */}
             <View className="space-y-2 mt-4">
               <View className="flex-row justify-between items-center">
-                <Text className="font-medium text-gray-900">Contraseña</Text>
+                <Text className="font-medium text-gray-900">Contrasenya</Text>
                 <TouchableOpacity>
-                  <Text className="text-sm font-medium text-emerald-500">
-                    ¿Olvidaste tu contraseña?
+                  <Text
+                    className="text-sm font-medium text-emerald-500"
+                    onPress={() => router.push("/(auth)/forgotPassword")}
+                  >
+                    Has oblidat la contrasenya?
                   </Text>
                 </TouchableOpacity>
               </View>
@@ -201,8 +161,10 @@ const handleLogin = () => {
                     setPassword(text);
                     if (passwordError) setPasswordError("");
                   }}
-                  onEndEditing={(e) => handlePasswordEndEditing(e.nativeEvent.text)}
-                  placeholder="Introduce tu contraseña"
+                  onEndEditing={(e) =>
+                    handlePasswordEndEditing(e.nativeEvent.text)
+                  }
+                  placeholder="Introdueix la teva contrasenya"
                   placeholderTextColor="#9CA3AF"
                   secureTextEntry={!showPassword}
                   autoCapitalize="none"
@@ -238,23 +200,29 @@ const handleLogin = () => {
                 </View>
               ) : null}
             </View>
-
             {/* Botón de Inicio de Sesión */}
             <TouchableOpacity
-              className="w-full h-12 bg-emerald-500 rounded-xl flex items-center justify-center mt-8 active:bg-emerald-600 shadow-sm"
+              className={`w-full h-12 rounded-xl flex items-center justify-center mt-4 shadow-sm ${
+                isLoading
+                  ? "bg-emerald-400"
+                  : "bg-emerald-500 active:bg-emerald-600"
+              }`}
               onPress={handleLogin}
+              disabled={isLoading}
             >
-              <Text className="text-white text-base font-semibold">
-                Iniciar sesión
+              <Text className="text-white text-base font-bold">
+                {isLoading ? "Iniciant sessió..." : "Iniciar sessió"}
               </Text>
             </TouchableOpacity>
           </View>
 
           {/* Enlace al Registro */}
           <View className="mt-6 flex-row justify-center items-center pb-8">
-            <Text className="text-gray-500">¿No tienes cuenta? </Text>
-            <TouchableOpacity onPress={() => router.push("/(auth)/register")}>
-              <Text className="text-emerald-500 font-bold">Regístrate</Text>
+            <Text className="text-gray-500">No tens compte? </Text>
+            <TouchableOpacity
+              onPress={() => router.replace("/(auth)/register")}
+            >
+              <Text className="text-emerald-500 font-bold">Regístrat</Text>
             </TouchableOpacity>
           </View>
         </View>
